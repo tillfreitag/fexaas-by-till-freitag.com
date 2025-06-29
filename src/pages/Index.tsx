@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,8 +8,10 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { Globe, Download, Edit, Zap, Search, FileText } from "lucide-react";
 import { FAQTable } from "@/components/FAQTable";
+import { ApiKeySetup } from "@/components/ApiKeySetup";
 import { extractFAQs } from "@/utils/faqExtractor";
 import { exportToExcel, exportToCSV } from "@/utils/exportUtils";
+import { CrawlerService } from "@/services/CrawlerService";
 import type { FAQItem } from "@/types/faq";
 
 const Index = () => {
@@ -19,7 +20,16 @@ const Index = () => {
   const [progress, setProgress] = useState(0);
   const [faqs, setFaqs] = useState<FAQItem[]>([]);
   const [hasResults, setHasResults] = useState(false);
+  const [needsApiKey, setNeedsApiKey] = useState(!CrawlerService.hasApiKey());
   const { toast } = useToast();
+
+  const handleApiKeySet = () => {
+    setNeedsApiKey(false);
+    toast({
+      title: "Ready to Crawl",
+      description: "You can now extract FAQs from real websites!",
+    });
+  };
 
   const handleExtract = async () => {
     if (!url) {
@@ -53,20 +63,18 @@ const Index = () => {
         }
         return prev + Math.random() * 15;
       });
-    }, 200);
+    }, 300);
 
     try {
-      // Simulate extraction process
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
       const extractedFAQs = await extractFAQs(url);
       setFaqs(extractedFAQs);
       setProgress(100);
       setHasResults(true);
       
+      const crawlType = CrawlerService.hasApiKey() ? "real website crawling" : "demo mode";
       toast({
         title: "Extraction Complete",
-        description: `Found ${extractedFAQs.length} FAQ items from ${url}`,
+        description: `Found ${extractedFAQs.length} FAQ items using ${crawlType}`,
       });
     } catch (error) {
       toast({
@@ -100,21 +108,79 @@ const Index = () => {
     setFaqs(updatedFaqs);
   };
 
+  // Show API key setup if needed
+  if (needsApiKey) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+        {/* Header */}
+        <div className="bg-white/80 backdrop-blur-sm border-b shadow-sm sticky top-0 z-50">
+          <div className="container mx-auto px-4 py-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg">
+                <FileText className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                  FEXaaS
+                </h1>
+                <p className="text-sm text-muted-foreground">FAQ Extractor as a Service</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center space-y-4 mb-8">
+            <h2 className="text-4xl font-bold text-gray-900">
+              Real Website Crawling
+            </h2>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              Setup your Firecrawl API key to extract FAQs from real websites
+            </p>
+          </div>
+
+          <ApiKeySetup onApiKeySet={handleApiKeySet} />
+
+          <div className="text-center mt-8">
+            <p className="text-sm text-gray-500">
+              Don't have an API key? You can still{" "}
+              <Button 
+                variant="link" 
+                className="p-0 h-auto text-blue-600 hover:text-blue-800"
+                onClick={() => setNeedsApiKey(false)}
+              >
+                try the demo mode
+              </Button>
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
       {/* Header */}
       <div className="bg-white/80 backdrop-blur-sm border-b shadow-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg">
-              <FileText className="h-6 w-6 text-white" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg">
+                <FileText className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                  FEXaaS
+                </h1>
+                <p className="text-sm text-muted-foreground">FAQ Extractor as a Service</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                FEXaaS
-              </h1>
-              <p className="text-sm text-muted-foreground">FAQ Extractor as a Service</p>
-            </div>
+            
+            {CrawlerService.hasApiKey() && (
+              <Badge variant="outline" className="text-green-600 border-green-300">
+                Real Crawling Enabled
+              </Badge>
+            )}
           </div>
         </div>
       </div>
@@ -126,7 +192,10 @@ const Index = () => {
             Extract FAQs from Any Website
           </h2>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Crawl websites, extract structured FAQ content, edit in real-time, and export to Excel or CSV
+            {CrawlerService.hasApiKey() 
+              ? "Crawl real websites, extract structured FAQ content, edit in real-time, and export to Excel or CSV"
+              : "Demo mode: Try the interface with sample data, or setup real crawling with Firecrawl API"
+            }
           </p>
         </div>
 
@@ -172,7 +241,9 @@ const Index = () => {
             {isLoading && (
               <div className="space-y-2">
                 <div className="flex justify-between text-sm text-gray-600">
-                  <span>Crawling website...</span>
+                  <span>
+                    {CrawlerService.hasApiKey() ? "Crawling website..." : "Generating demo data..."}
+                  </span>
                   <span>{Math.round(progress)}%</span>
                 </div>
                 <Progress value={progress} className="h-2" />
@@ -189,7 +260,10 @@ const Index = () => {
                 <Search className="h-12 w-12 text-blue-600 mx-auto mb-4" />
                 <h3 className="font-semibold mb-2">Smart Crawling</h3>
                 <p className="text-sm text-gray-600">
-                  Automatically finds FAQ pages, support sections, and Q&A content
+                  {CrawlerService.hasApiKey() 
+                    ? "Real-time crawling of FAQ pages, support sections, and Q&A content"
+                    : "Demo mode with realistic sample data based on your URL"
+                  }
                 </p>
               </CardContent>
             </Card>
@@ -225,6 +299,11 @@ const Index = () => {
                 <Badge variant="secondary" className="text-lg px-3 py-1">
                   {faqs.length} items found
                 </Badge>
+                {!CrawlerService.hasApiKey() && (
+                  <Badge variant="outline" className="text-orange-600 border-orange-300">
+                    Demo Data
+                  </Badge>
+                )}
               </div>
               
               <div className="flex gap-2">

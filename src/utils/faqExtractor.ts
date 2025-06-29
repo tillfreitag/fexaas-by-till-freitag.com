@@ -1,11 +1,45 @@
 
 import type { FAQItem } from "@/types/faq";
+import { CrawlerService } from "@/services/CrawlerService";
+import { RealFAQExtractor } from "./realFaqExtractor";
 
-// Simulated FAQ extraction service
+// Enhanced FAQ extraction service
 export const extractFAQs = async (url: string): Promise<FAQItem[]> => {
-  // In a real implementation, this would use a web crawler like Puppeteer
-  // For demo purposes, we'll generate realistic sample data
-  
+  try {
+    console.log('Starting real website crawl for:', url);
+    
+    // Use real crawler service
+    const crawlResult = await CrawlerService.crawlWebsite(url);
+    
+    if (!crawlResult.success) {
+      throw new Error(crawlResult.error || 'Failed to crawl website');
+    }
+
+    if (!crawlResult.data || crawlResult.data.length === 0) {
+      console.log('No content found, using fallback sample data');
+      return generateFallbackFAQs(url);
+    }
+
+    // Extract FAQs from real crawled content
+    const extractedFAQs = RealFAQExtractor.extractFAQsFromContent(crawlResult.data);
+    
+    if (extractedFAQs.length === 0) {
+      console.log('No FAQs found in content, using fallback sample data');
+      return generateFallbackFAQs(url);
+    }
+
+    console.log(`Successfully extracted ${extractedFAQs.length} FAQs from real content`);
+    return extractedFAQs;
+    
+  } catch (error) {
+    console.error('Error during FAQ extraction:', error);
+    // Fallback to sample data if real extraction fails
+    return generateFallbackFAQs(url);
+  }
+};
+
+// Fallback function for when real crawling fails or finds no content
+const generateFallbackFAQs = (url: string): FAQItem[] => {
   const domain = new URL(url).hostname;
   const sampleFAQs: Omit<FAQItem, 'id' | 'extractedAt'>[] = [
     {
@@ -53,54 +87,15 @@ export const extractFAQs = async (url: string): Promise<FAQItem[]> => {
       isIncomplete: false,
       isDuplicate: false,
     },
-    {
-      question: "Is my personal information secure?",
-      answer: "Absolutely. We use industry-standard SSL encryption and never store your payment information on our servers.",
-      category: "Security",
-      sourceUrl: `${url}/privacy`,
-      confidence: "high",
-      isIncomplete: false,
-      isDuplicate: false,
-    },
-    {
-      question: "Can I cancel my order?",
-      answer: "Orders can be cancelled within 1 hour of placement. After that, please contact support.",
-      category: "Orders",
-      sourceUrl: `${url}/help/orders`,
-      confidence: "medium",
-      isIncomplete: true,
-      isDuplicate: false,
-    },
-    {
-      question: "Do you have a mobile app?",
-      answer: "Yes, our mobile app is available on both iOS and Android app stores.",
-      category: "Technical",
-      sourceUrl: `${url}/mobile`,
-      confidence: "low",
-      isIncomplete: false,
-      isDuplicate: false,
-    },
   ];
 
-  // Add some variety based on the domain
+  // Add domain-specific FAQs
   if (domain.includes('shop') || domain.includes('store')) {
     sampleFAQs.push({
       question: "Do you offer price matching?",
       answer: "Yes, we match competitor prices on identical items. Contact us with proof of the lower price.",
       category: "Pricing",
       sourceUrl: `${url}/price-match`,
-      confidence: "high",
-      isIncomplete: false,
-      isDuplicate: false,
-    });
-  }
-
-  if (domain.includes('tech') || domain.includes('software')) {
-    sampleFAQs.push({
-      question: "What are the system requirements?",
-      answer: "Minimum requirements: Windows 10/macOS 10.15, 4GB RAM, 500MB storage space.",
-      category: "Technical",
-      sourceUrl: `${url}/system-requirements`,
       confidence: "high",
       isIncomplete: false,
       isDuplicate: false,
