@@ -60,11 +60,11 @@ export class CrawlerService {
             excludeTags: ['nav', 'footer', 'header', 'script', 'style']
           });
 
-          if (response.success && response.data) {
+          if (response.success) {
             crawlResults.push({
               url: targetUrl,
-              content: response.data.markdown || response.data.html,
-              metadata: response.data.metadata
+              content: response.markdown || response.html || '',
+              metadata: response.metadata
             });
           }
         } catch (error) {
