@@ -66,9 +66,11 @@ export class CrawlerService {
 
       if (!crawlResponse.success) {
         console.error('Firecrawl crawl failed:', crawlResponse);
+        // Fix: Check if crawlResponse has error property by checking success first
+        const errorMessage = 'error' in crawlResponse ? crawlResponse.error : 'Failed to crawl website';
         return { 
           success: false, 
-          error: crawlResponse.error || 'Failed to crawl website' 
+          error: errorMessage || 'Failed to crawl website' 
         };
       }
 
