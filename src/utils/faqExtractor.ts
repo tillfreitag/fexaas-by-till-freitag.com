@@ -1,12 +1,13 @@
 
 import type { FAQItem } from "@/types/faq";
 import { CrawlerService } from "@/services/CrawlerService";
-import { RealFAQExtractor } from "./realFaqExtractor";
+import { OpenAIService } from "@/services/OpenAIService";
+import { LLMFAQExtractor } from "./llmFaqExtractor";
 
-// Enhanced FAQ extraction service
+// Enhanced FAQ extraction service with LLM support
 export const extractFAQs = async (url: string): Promise<FAQItem[]> => {
   try {
-    console.log('Starting real website crawl for:', url);
+    console.log('Starting website crawl for:', url);
     
     // Use real crawler service
     const crawlResult = await CrawlerService.crawlWebsite(url);
@@ -20,20 +21,26 @@ export const extractFAQs = async (url: string): Promise<FAQItem[]> => {
       return generateFallbackFAQs(url);
     }
 
-    // Extract FAQs from real crawled content
-    const extractedFAQs = RealFAQExtractor.extractFAQsFromContent(crawlResult.data);
-    
-    if (extractedFAQs.length === 0) {
-      console.log('No FAQs found in content, using fallback sample data');
-      return generateFallbackFAQs(url);
+    // Check if we have OpenAI API key for intelligent extraction
+    if (OpenAIService.hasApiKey()) {
+      console.log('Using AI-powered FAQ extraction');
+      try {
+        const extractedFAQs = await LLMFAQExtractor.extractFAQsFromContent(crawlResult.data);
+        
+        if (extractedFAQs.length > 0) {
+          console.log(`Successfully extracted ${extractedFAQs.length} FAQs using AI`);
+          return extractedFAQs;
+        }
+      } catch (error) {
+        console.error('AI extraction failed, falling back to sample data:', error);
+      }
     }
 
-    console.log(`Successfully extracted ${extractedFAQs.length} FAQs from real content`);
-    return extractedFAQs;
+    console.log('No AI extraction available, using fallback sample data');
+    return generateFallbackFAQs(url);
     
   } catch (error) {
     console.error('Error during FAQ extraction:', error);
-    // Fallback to sample data if real extraction fails
     return generateFallbackFAQs(url);
   }
 };

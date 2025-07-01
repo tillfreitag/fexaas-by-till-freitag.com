@@ -6,12 +6,14 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import { Globe, Download, Edit, Zap, Search, FileText } from "lucide-react";
+import { Globe, Download, Edit, Zap, Search, FileText, Settings } from "lucide-react";
 import { FAQTable } from "@/components/FAQTable";
 import { ApiKeySetup } from "@/components/ApiKeySetup";
+import { OpenAIKeySetup } from "@/components/OpenAIKeySetup";
 import { extractFAQs } from "@/utils/faqExtractor";
 import { exportToExcel, exportToCSV } from "@/utils/exportUtils";
 import { CrawlerService } from "@/services/CrawlerService";
+import { OpenAIService } from "@/services/OpenAIService";
 import type { FAQItem } from "@/types/faq";
 
 const Index = () => {
@@ -20,14 +22,25 @@ const Index = () => {
   const [progress, setProgress] = useState(0);
   const [faqs, setFaqs] = useState<FAQItem[]>([]);
   const [hasResults, setHasResults] = useState(false);
-  const [needsApiKey, setNeedsApiKey] = useState(!CrawlerService.hasApiKey());
+  const [needsFirecrawlKey, setNeedsFirecrawlKey] = useState(!CrawlerService.hasApiKey());
+  const [needsOpenAIKey, setNeedsOpenAIKey] = useState(false);
+  const [showKeySetup, setShowKeySetup] = useState(false);
   const { toast } = useToast();
 
-  const handleApiKeySet = () => {
-    setNeedsApiKey(false);
+  const handleFirecrawlKeySet = () => {
+    setNeedsFirecrawlKey(false);
     toast({
-      title: "Ready to Crawl",
-      description: "You can now extract FAQs from real websites!",
+      title: "Firecrawl Ready",
+      description: "You can now crawl real websites!",
+    });
+  };
+
+  const handleOpenAIKeySet = () => {
+    setNeedsOpenAIKey(false);
+    setShowKeySetup(false);
+    toast({
+      title: "AI Extraction Ready",
+      description: "You can now use AI-powered FAQ extraction!",
     });
   };
 
@@ -71,10 +84,15 @@ const Index = () => {
       setProgress(100);
       setHasResults(true);
       
-      const crawlType = CrawlerService.hasApiKey() ? "real website crawling" : "demo mode";
+      const extractionType = OpenAIService.hasApiKey() 
+        ? "AI-powered extraction" 
+        : CrawlerService.hasApiKey() 
+          ? "real website crawling" 
+          : "demo mode";
+          
       toast({
         title: "Extraction Complete",
-        description: `Found ${extractedFAQs.length} FAQ items using ${crawlType}`,
+        description: `Found ${extractedFAQs.length} FAQ items using ${extractionType}`,
       });
     } catch (error) {
       toast({
@@ -108,8 +126,8 @@ const Index = () => {
     setFaqs(updatedFaqs);
   };
 
-  // Show API key setup if needed
-  if (needsApiKey) {
+  // Show Firecrawl API key setup if needed
+  if (needsFirecrawlKey) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
         {/* Header */}
@@ -139,7 +157,7 @@ const Index = () => {
             </p>
           </div>
 
-          <ApiKeySetup onApiKeySet={handleApiKeySet} />
+          <ApiKeySetup onApiKeySet={handleFirecrawlKeySet} />
 
           <div className="text-center mt-8">
             <p className="text-sm text-gray-500">
@@ -147,12 +165,57 @@ const Index = () => {
               <Button 
                 variant="link" 
                 className="p-0 h-auto text-blue-600 hover:text-blue-800"
-                onClick={() => setNeedsApiKey(false)}
+                onClick={() => setNeedsFirecrawlKey(false)}
               >
                 try the demo mode
               </Button>
             </p>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show OpenAI API key setup if needed
+  if (showKeySetup && needsOpenAIKey) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-indigo-100">
+        {/* Header */}
+        <div className="bg-white/80 backdrop-blur-sm border-b shadow-sm sticky top-0 z-50">
+          <div className="container mx-auto px-4 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-lg">
+                  <FileText className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
+                    FEXaaS
+                  </h1>
+                  <p className="text-sm text-muted-foreground">FAQ Extractor as a Service</p>
+                </div>
+              </div>
+              <Button 
+                variant="outline" 
+                onClick={() => setShowKeySetup(false)}
+              >
+                Skip for now
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center space-y-4 mb-8">
+            <h2 className="text-4xl font-bold text-gray-900">
+              AI-Powered FAQ Extraction
+            </h2>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              Setup your OpenAI API key for intelligent FAQ extraction
+            </p>
+          </div>
+
+          <OpenAIKeySetup onApiKeySet={handleOpenAIKeySet} />
         </div>
       </div>
     );
@@ -176,11 +239,29 @@ const Index = () => {
               </div>
             </div>
             
-            {CrawlerService.hasApiKey() && (
-              <Badge variant="outline" className="text-green-600 border-green-300">
-                Real Crawling Enabled
-              </Badge>
-            )}
+            <div className="flex items-center gap-3">
+              {CrawlerService.hasApiKey() && (
+                <Badge variant="outline" className="text-green-600 border-green-300">
+                  Crawling Enabled
+                </Badge>
+              )}
+              {OpenAIService.hasApiKey() && (
+                <Badge variant="outline" className="text-purple-600 border-purple-300">
+                  AI Extraction
+                </Badge>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setNeedsOpenAIKey(!OpenAIService.hasApiKey());
+                  setShowKeySetup(true);
+                }}
+              >
+                <Settings className="h-4 w-4 mr-1" />
+                Setup AI
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -192,9 +273,11 @@ const Index = () => {
             Extract FAQs from Any Website
           </h2>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            {CrawlerService.hasApiKey() 
-              ? "Crawl real websites, extract structured FAQ content, edit in real-time, and export to Excel or CSV"
-              : "Demo mode: Try the interface with sample data, or setup real crawling with Firecrawl API"
+            {OpenAIService.hasApiKey() 
+              ? "AI-powered extraction finds relevant FAQs in any language and format"
+              : CrawlerService.hasApiKey() 
+                ? "Real website crawling with smart content extraction"
+                : "Demo mode: Try the interface with sample data"
             }
           </p>
         </div>
@@ -242,7 +325,12 @@ const Index = () => {
               <div className="space-y-2">
                 <div className="flex justify-between text-sm text-gray-600">
                   <span>
-                    {CrawlerService.hasApiKey() ? "Crawling website..." : "Generating demo data..."}
+                    {OpenAIService.hasApiKey() 
+                      ? "AI analyzing content..." 
+                      : CrawlerService.hasApiKey() 
+                        ? "Crawling website..." 
+                        : "Generating demo data..."
+                    }
                   </span>
                   <span>{Math.round(progress)}%</span>
                 </div>
@@ -257,12 +345,12 @@ const Index = () => {
           <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
             <Card className="border-0 bg-white/70 backdrop-blur-sm hover:bg-white/90 transition-all duration-200">
               <CardContent className="p-6 text-center">
-                <Search className="h-12 w-12 text-blue-600 mx-auto mb-4" />
-                <h3 className="font-semibold mb-2">Smart Crawling</h3>
+                <Zap className="h-12 w-12 text-purple-600 mx-auto mb-4" />
+                <h3 className="font-semibold mb-2">AI-Powered</h3>
                 <p className="text-sm text-gray-600">
-                  {CrawlerService.hasApiKey() 
-                    ? "Real-time crawling of FAQ pages, support sections, and Q&A content"
-                    : "Demo mode with realistic sample data based on your URL"
+                  {OpenAIService.hasApiKey() 
+                    ? "Intelligent extraction that understands context and finds relevant FAQs"
+                    : "Setup OpenAI API for smart FAQ extraction in any language"
                   }
                 </p>
               </CardContent>
@@ -299,6 +387,11 @@ const Index = () => {
                 <Badge variant="secondary" className="text-lg px-3 py-1">
                   {faqs.length} items found
                 </Badge>
+                {OpenAIService.hasApiKey() && (
+                  <Badge variant="outline" className="text-purple-600 border-purple-300">
+                    AI Extracted
+                  </Badge>
+                )}
                 {!CrawlerService.hasApiKey() && (
                   <Badge variant="outline" className="text-orange-600 border-orange-300">
                     Demo Data
@@ -309,14 +402,14 @@ const Index = () => {
               <div className="flex gap-2">
                 <Button 
                   variant="outline" 
-                  onClick={handleExportCSV}
+                  onClick={() => exportToCSV(faqs, url)}
                   className="hover:bg-green-50 hover:border-green-300"
                 >
                   <Download className="h-4 w-4 mr-2" />
                   Export CSV
                 </Button>
                 <Button 
-                  onClick={handleExportExcel}
+                  onClick={() => exportToExcel(faqs, url)}
                   className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
                 >
                   <Download className="h-4 w-4 mr-2" />
@@ -329,7 +422,7 @@ const Index = () => {
 
             <FAQTable 
               faqs={faqs} 
-              onUpdate={handleFAQUpdate}
+              onUpdate={setFaqs}
             />
           </div>
         )}

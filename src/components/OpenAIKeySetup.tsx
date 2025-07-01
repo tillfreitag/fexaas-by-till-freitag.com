@@ -1,0 +1,132 @@
+
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useToast } from "@/hooks/use-toast";
+import { Zap, Eye, EyeOff, ExternalLink } from "lucide-react";
+import { OpenAIService } from "@/services/OpenAIService";
+
+interface OpenAIKeySetupProps {
+  onApiKeySet: () => void;
+}
+
+export const OpenAIKeySetup = ({ onApiKeySet }: OpenAIKeySetupProps) => {
+  const [apiKey, setApiKey] = useState("");
+  const [isVisible, setIsVisible] = useState(false);
+  const [isValidating, setIsValidating] = useState(false);
+  const { toast } = useToast();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!apiKey.trim()) {
+      toast({
+        title: "API Key Required",
+        description: "Please enter your OpenAI API key",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsValidating(true);
+    
+    try {
+      const isValid = await OpenAIService.testApiKey(apiKey);
+      
+      if (isValid) {
+        OpenAIService.saveApiKey(apiKey);
+        toast({
+          title: "API Key Saved",
+          description: "Your OpenAI API key has been validated and saved successfully!",
+        });
+        onApiKeySet();
+      } else {
+        toast({
+          title: "Invalid API Key",
+          description: "The API key you entered is not valid. Please check and try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Validation Error",
+        description: "Unable to validate the API key. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsValidating(false);
+    }
+  };
+
+  return (
+    <Card className="max-w-lg mx-auto shadow-lg border-0 bg-white/90 backdrop-blur-sm">
+      <CardHeader className="text-center">
+        <div className="mx-auto p-3 bg-purple-100 rounded-full w-fit mb-4">
+          <Zap className="h-8 w-8 text-purple-600" />
+        </div>
+        <CardTitle className="text-2xl">Setup OpenAI API</CardTitle>
+        <CardDescription className="text-base">
+          To use AI-powered FAQ extraction, you'll need an OpenAI API key.
+          <br />
+          <a 
+            href="https://platform.openai.com/api-keys" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-purple-600 hover:text-purple-800 font-medium mt-2"
+          >
+            Get your API key here
+            <ExternalLink className="h-4 w-4" />
+          </a>
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <label htmlFor="apiKey" className="text-sm font-medium">
+              OpenAI API Key
+            </label>
+            <div className="relative">
+              <Input
+                id="apiKey"
+                type={isVisible ? "text" : "password"}
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder="sk-..."
+                className="pr-10"
+                disabled={isValidating}
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                onClick={() => setIsVisible(!isVisible)}
+              >
+                {isVisible ? (
+                  <EyeOff className="h-4 w-4 text-gray-400" />
+                ) : (
+                  <Eye className="h-4 w-4 text-gray-400" />
+                )}
+              </Button>
+            </div>
+          </div>
+          
+          <Button 
+            type="submit" 
+            className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
+            disabled={isValidating}
+          >
+            {isValidating ? "Validating..." : "Save & Continue"}
+          </Button>
+        </form>
+        
+        <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+          <p className="text-sm text-blue-800">
+            <strong>Note:</strong> Your API key is stored locally in your browser and never sent to our servers.
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
