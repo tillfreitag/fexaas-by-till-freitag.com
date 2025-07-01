@@ -17,22 +17,33 @@ interface LLMFAQResponse {
 
 export class LLMFAQExtractor {
   static async extractFAQsFromContent(crawledData: CrawledContent[]): Promise<FAQItem[]> {
+    console.log(`Processing ${crawledData.length} crawled pages for FAQ extraction`);
+    
     const faqs: FAQItem[] = [];
     
     for (const data of crawledData) {
       try {
-        console.log(`Processing content from ${data.url}, length: ${data.content.length}`);
+        console.log(`Processing page: ${data.url}, content length: ${data.content.length}`);
         
         // Clean and prepare content
         const cleanedContent = this.cleanContent(data.content);
         
-        if (cleanedContent.length < 100) {
-          console.log('Content too short, skipping...');
+        if (cleanedContent.length < 200) {
+          console.log(`Content too short (${cleanedContent.length} chars), skipping: ${data.url}`);
           continue;
         }
 
+        console.log(`Sending ${cleanedContent.length} characters to OpenAI for extraction`);
+
         // Extract FAQs using OpenAI
         const llmFAQs = await OpenAIService.extractFAQs(cleanedContent, data.url);
+        
+        if (!llmFAQs || llmFAQs.length === 0) {
+          console.log(`No FAQs extracted from: ${data.url}`);
+          continue;
+        }
+
+        console.log(`OpenAI extracted ${llmFAQs.length} FAQs from: ${data.url}`);
         
         // Convert to FAQItem format
         const processedFAQs = llmFAQs.map((faq: LLMFAQResponse) => 
@@ -47,23 +58,26 @@ export class LLMFAQExtractor {
       }
     }
 
+    console.log(`Total FAQs before post-processing: ${faqs.length}`);
+
     // Remove duplicates and post-process
-    return this.postProcessFAQs(faqs);
+    const finalFAQs = this.postProcessFAQs(faqs);
+    
+    console.log(`Final FAQ count after post-processing: ${finalFAQs.length}`);
+    
+    return finalFAQs;
   }
 
   private static cleanContent(content: string): string {
-    // Remove common website noise
+    // More gentle content cleaning to preserve FAQ-relevant content
     let cleaned = content
-      // Remove navigation and footer patterns
-      .replace(/\n\s*(Home|About|Contact|Privacy|Terms|Login|Sign up|Menu|Search|Newsletter|Subscribe|Follow us)\s*\n/gi, '\n')
-      // Remove copyright and legal text
-      .replace(/\n\s*(Copyright|©|All rights reserved|Terms of Service|Privacy Policy).*\n/gi, '\n')
-      // Remove social media links
-      .replace(/\n\s*(Facebook|Twitter|Instagram|LinkedIn|YouTube)\s*\n/gi, '\n')
-      // Remove excessive whitespace
+      // Remove excessive whitespace but preserve structure
       .replace(/\n\s*\n\s*\n/g, '\n\n')
-      // Remove markdown artifacts that might confuse the LLM
-      .replace(/^\s*[#*-]{1,3}\s*/gm, '')
+      // Remove obvious navigation patterns
+      .replace(/\n\s*(Home|About|Contact|Privacy|Terms|Login|Sign up|Menu|Search)\s*\n/gi, '\n')
+      // Remove social media noise
+      .replace(/\n\s*(Follow us|Share|Like|Tweet)\s*\n/gi, '\n')
+      // Clean up but don't be too aggressive
       .trim();
 
     return cleaned;
@@ -97,10 +111,11 @@ export class LLMFAQExtractor {
       if (!seenQuestions.has(normalizedQuestion)) {
         seenQuestions.add(normalizedQuestion);
         uniqueFAQs.push(faq);
+      } else {
+        console.log(`Duplicate question filtered out: ${faq.question}`);
       }
     }
 
-    console.log(`Final processed FAQs: ${uniqueFAQs.length}`);
     return uniqueFAQs;
   }
 }

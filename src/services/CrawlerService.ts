@@ -1,6 +1,5 @@
 
 import FirecrawlApp from '@mendable/firecrawl-js';
-import type { FAQItem } from '@/types/faq';
 
 interface CrawlResult {
   success: boolean;
@@ -15,6 +14,7 @@ export class CrawlerService {
   static saveApiKey(apiKey: string): void {
     localStorage.setItem(this.API_KEY_STORAGE_KEY, apiKey);
     this.firecrawlApp = new FirecrawlApp({ apiKey });
+    console.log('Firecrawl API key saved successfully');
   }
 
   static getApiKey(): string | null {
@@ -27,11 +27,13 @@ export class CrawlerService {
 
   static async testApiKey(apiKey: string): Promise<boolean> {
     try {
+      console.log('Testing Firecrawl API key...');
       const testApp = new FirecrawlApp({ apiKey });
       const testResponse = await testApp.scrapeUrl('https://example.com');
+      console.log('Firecrawl API key test result:', testResponse.success);
       return testResponse.success;
     } catch (error) {
-      console.error('Error testing API key:', error);
+      console.error('Error testing Firecrawl API key:', error);
       return false;
     }
   }
@@ -39,7 +41,8 @@ export class CrawlerService {
   static async crawlWebsite(url: string): Promise<CrawlResult> {
     const apiKey = this.getApiKey();
     if (!apiKey) {
-      return { success: false, error: 'API key not found' };
+      console.error('Firecrawl API key not found');
+      return { success: false, error: 'Firecrawl API key not found' };
     }
 
     try {
@@ -47,56 +50,52 @@ export class CrawlerService {
         this.firecrawlApp = new FirecrawlApp({ apiKey });
       }
 
-      // First, try to find FAQ-specific pages
-      const faqUrls = this.generateFAQUrls(url);
-      const crawlResults = [];
+      console.log(`Starting crawl for: ${url}`);
 
-      // Crawl the main URL and FAQ-specific URLs
-      for (const targetUrl of [url, ...faqUrls]) {
-        try {
-          const response = await this.firecrawlApp.scrapeUrl(targetUrl, {
-            formats: ['markdown', 'html'],
-            includeTags: ['h1', 'h2', 'h3', 'h4', 'p', 'div', 'section', 'details', 'summary'],
-            excludeTags: ['nav', 'footer', 'header', 'script', 'style']
-          });
-
-          if (response.success) {
-            crawlResults.push({
-              url: targetUrl,
-              content: response.markdown || response.html || '',
-              metadata: response.metadata
-            });
-          }
-        } catch (error) {
-          console.log(`Failed to crawl ${targetUrl}:`, error);
-          // Continue with other URLs
+      // Use crawlUrl for proper website crawling (multiple pages)
+      const crawlResponse = await this.firecrawlApp.crawlUrl(url, {
+        limit: 10, // Crawl up to 10 pages
+        scrapeOptions: {
+          formats: ['markdown'],
+          includeTags: ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'div', 'section', 'article', 'details', 'summary', 'dl', 'dt', 'dd'],
+          excludeTags: ['nav', 'footer', 'header', 'script', 'style', 'aside', 'form', 'button']
         }
+      });
+
+      console.log('Firecrawl crawl response:', crawlResponse);
+
+      if (!crawlResponse.success) {
+        console.error('Firecrawl crawl failed:', crawlResponse);
+        return { 
+          success: false, 
+          error: crawlResponse.error || 'Failed to crawl website' 
+        };
       }
 
-      return { success: true, data: crawlResults };
+      // Transform the response to match our expected format
+      const crawlData = crawlResponse.data?.map((page: any) => ({
+        url: page.metadata?.sourceURL || page.url || url,
+        content: page.markdown || page.content || '',
+        metadata: page.metadata || {}
+      })) || [];
+
+      console.log(`Successfully crawled ${crawlData.length} pages`);
+      
+      // Filter out pages with minimal content
+      const filteredData = crawlData.filter((page: any) => 
+        page.content && page.content.length > 100
+      );
+
+      console.log(`Filtered to ${filteredData.length} pages with substantial content`);
+
+      return { success: true, data: filteredData };
+
     } catch (error) {
-      console.error('Error during crawl:', error);
+      console.error('Error during Firecrawl crawl:', error);
       return { 
         success: false, 
         error: error instanceof Error ? error.message : 'Failed to crawl website' 
       };
     }
-  }
-
-  private static generateFAQUrls(baseUrl: string): string[] {
-    const domain = new URL(baseUrl).origin;
-    const faqPaths = [
-      '/faq',
-      '/faqs',
-      '/support',
-      '/help',
-      '/questions',
-      '/support/faq',
-      '/help/faq',
-      '/customer-support',
-      '/knowledge-base'
-    ];
-
-    return faqPaths.map(path => `${domain}${path}`);
   }
 }

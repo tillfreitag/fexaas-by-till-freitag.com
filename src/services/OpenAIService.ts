@@ -36,12 +36,14 @@ export class OpenAIService {
 
   static async testApiKey(apiKey: string): Promise<boolean> {
     try {
+      console.log('Testing OpenAI API key...');
       const response = await fetch(`${this.BASE_URL}/models`, {
         headers: {
           'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
       });
+      console.log('OpenAI API key test result:', response.ok);
       return response.ok;
     } catch (error) {
       console.error('Error testing OpenAI API key:', error);
@@ -54,6 +56,8 @@ export class OpenAIService {
     if (!apiKey) {
       throw new Error('OpenAI API key not found');
     }
+
+    console.log(`Extracting FAQs from content (${content.length} chars) for: ${sourceUrl}`);
 
     const messages: OpenAIMessage[] = [
       {
@@ -68,6 +72,7 @@ RULES:
 5. Handle multiple languages (English, German, French, Spanish, etc.)
 6. Look for both explicit Q&A sections and implicit FAQ content
 7. Extract 5-15 high-quality FAQs maximum
+8. Focus on customer service, product, and support related questions
 
 OUTPUT FORMAT:
 Return a JSON array of objects with this exact structure:
@@ -75,7 +80,7 @@ Return a JSON array of objects with this exact structure:
   {
     "question": "Clear, specific question",
     "answer": "Complete, helpful answer",
-    "category": "Shipping|Returns|Payment|Support|Technical|General|Account",
+    "category": "Shipping|Returns|Payment|Support|Technical|General|Account|Products",
     "confidence": "high|medium|low"
   }
 ]
@@ -89,6 +94,8 @@ IMPORTANT: Return ONLY the JSON array, no other text or explanation.`
     ];
 
     try {
+      console.log('Sending request to OpenAI API...');
+      
       const response = await fetch(`${this.BASE_URL}/chat/completions`, {
         method: 'POST',
         headers: {
@@ -104,6 +111,8 @@ IMPORTANT: Return ONLY the JSON array, no other text or explanation.`
       });
 
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`OpenAI API error: ${response.status} - ${errorText}`);
         throw new Error(`OpenAI API error: ${response.status}`);
       }
 
@@ -111,17 +120,32 @@ IMPORTANT: Return ONLY the JSON array, no other text or explanation.`
       const content_response = data.choices[0]?.message?.content;
 
       if (!content_response) {
+        console.error('No response content from OpenAI API');
         throw new Error('No response from OpenAI API');
       }
 
-      console.log('OpenAI response:', content_response);
+      console.log('Raw OpenAI response:', content_response);
       
       // Parse the JSON response
       const cleanedResponse = content_response.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-      const faqs = JSON.parse(cleanedResponse);
+      
+      try {
+        const faqs = JSON.parse(cleanedResponse);
+        
+        if (!Array.isArray(faqs)) {
+          console.error('OpenAI response is not an array:', faqs);
+          throw new Error('Invalid response format from OpenAI');
+        }
 
-      console.log(`OpenAI extracted ${faqs.length} FAQs`);
-      return faqs;
+        console.log(`Successfully parsed ${faqs.length} FAQs from OpenAI response`);
+        console.log('Token usage:', data.usage);
+        
+        return faqs;
+      } catch (parseError) {
+        console.error('Failed to parse OpenAI JSON response:', parseError);
+        console.error('Response content:', cleanedResponse);
+        throw new Error('Failed to parse OpenAI response');
+      }
 
     } catch (error) {
       console.error('Error calling OpenAI API:', error);
