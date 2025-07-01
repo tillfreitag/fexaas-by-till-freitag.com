@@ -1,3 +1,4 @@
+
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -5,12 +6,14 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Edit, Check, X, ArrowUpDown, Search, Filter, AlertTriangle, Copy, Trash2 } from "lucide-react";
+import { Plus, Edit, Check, X, ArrowUpDown, Search, Filter, AlertTriangle, Copy, Trash2, Globe } from "lucide-react";
 import type { FAQItem } from "@/types/faq";
+
 interface FAQTableProps {
   faqs: FAQItem[];
   onUpdate: (faqs: FAQItem[]) => void;
 }
+
 export const FAQTable = ({
   faqs,
   onUpdate
@@ -20,59 +23,78 @@ export const FAQTable = ({
   const [searchTerm, setSearchTerm] = useState("");
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [filterConfidence, setFilterConfidence] = useState<string>("all");
+  const [filterLanguage, setFilterLanguage] = useState<string>("all");
   const [sortBy, setSortBy] = useState<keyof FAQItem>("extractedAt");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+
   const categories = useMemo(() => {
     const cats = Array.from(new Set(faqs.map(faq => faq.category)));
     return cats.sort();
   }, [faqs]);
+
+  const languages = useMemo(() => {
+    const langs = Array.from(new Set(faqs.map(faq => faq.language)));
+    return langs.sort();
+  }, [faqs]);
+
   const filteredAndSortedFAQs = useMemo(() => {
     let filtered = faqs.filter(faq => {
-      const matchesSearch = faq.question.toLowerCase().includes(searchTerm.toLowerCase()) || faq.answer.toLowerCase().includes(searchTerm.toLowerCase()) || faq.category.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesSearch = faq.question.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                           faq.answer.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                           faq.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           faq.language.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesCategory = filterCategory === "all" || faq.category === filterCategory;
       const matchesConfidence = filterConfidence === "all" || faq.confidence === filterConfidence;
-      return matchesSearch && matchesCategory && matchesConfidence;
+      const matchesLanguage = filterLanguage === "all" || faq.language === filterLanguage;
+      
+      return matchesSearch && matchesCategory && matchesConfidence && matchesLanguage;
     });
+
     return filtered.sort((a, b) => {
       const aVal = a[sortBy];
       const bVal = b[sortBy];
+      
       if (typeof aVal === 'string' && typeof bVal === 'string') {
         const comparison = aVal.localeCompare(bVal);
         return sortOrder === "asc" ? comparison : -comparison;
       }
       return 0;
     });
-  }, [faqs, searchTerm, filterCategory, filterConfidence, sortBy, sortOrder]);
+  }, [faqs, searchTerm, filterCategory, filterConfidence, filterLanguage, sortBy, sortOrder]);
+
   const handleEdit = (faq: FAQItem) => {
     setEditingId(faq.id);
-    setEditForm({
-      ...faq
-    });
+    setEditForm({ ...faq });
   };
+
   const handleSave = () => {
     if (!editingId || !editForm) return;
-    const updatedFaqs = faqs.map(faq => faq.id === editingId ? {
-      ...faq,
-      ...editForm
-    } : faq);
+    
+    const updatedFaqs = faqs.map(faq => 
+      faq.id === editingId ? { ...faq, ...editForm } : faq
+    );
     onUpdate(updatedFaqs);
     setEditingId(null);
     setEditForm({});
   };
+
   const handleCancel = () => {
     setEditingId(null);
     setEditForm({});
   };
+
   const handleDelete = (id: string) => {
     const updatedFaqs = faqs.filter(faq => faq.id !== id);
     onUpdate(updatedFaqs);
   };
+
   const handleAddNew = () => {
     const newFaq: FAQItem = {
       id: `faq-${Date.now()}`,
       question: "New Question",
       answer: "New Answer",
       category: "General",
+      language: "English",
       sourceUrl: "",
       confidence: "medium",
       isIncomplete: false,
@@ -82,6 +104,7 @@ export const FAQTable = ({
     onUpdate([...faqs, newFaq]);
     handleEdit(newFaq);
   };
+
   const handleSort = (field: keyof FAQItem) => {
     if (sortBy === field) {
       setSortOrder(sortOrder === "asc" ? "desc" : "asc");
@@ -90,7 +113,9 @@ export const FAQTable = ({
       setSortOrder("asc");
     }
   };
-  return <div className="space-y-4">
+
+  return (
+    <div className="space-y-4">
       {/* Filters and Controls */}
       <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-sm">
         <CardContent className="p-4">
@@ -98,7 +123,12 @@ export const FAQTable = ({
             <div className="flex-1 min-w-64">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input placeholder="Search questions, answers, or categories..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-10" />
+                <Input
+                  placeholder="Search questions, answers, categories, or languages..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
               </div>
             </div>
             
@@ -109,9 +139,26 @@ export const FAQTable = ({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Categories</SelectItem>
-                {categories.map(category => <SelectItem key={category} value={category}>
+                {categories.map(category => (
+                  <SelectItem key={category} value={category}>
                     {category}
-                  </SelectItem>)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={filterLanguage} onValueChange={setFilterLanguage}>
+              <SelectTrigger className="w-48">
+                <Globe className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Filter by language" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Languages</SelectItem>
+                {languages.map(language => (
+                  <SelectItem key={language} value={language}>
+                    {language}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
 
@@ -164,36 +211,69 @@ export const FAQTable = ({
                     <ArrowUpDown className="h-4 w-4 ml-1" />
                   </Button>
                 </th>
+                <th className="text-left p-4 font-medium text-gray-700">
+                  <Button variant="ghost" size="sm" onClick={() => handleSort('language')} className="hover:bg-gray-100 -ml-2">
+                    Language
+                    <ArrowUpDown className="h-4 w-4 ml-1" />
+                  </Button>
+                </th>
                 <th className="text-left p-4 font-medium text-gray-700">Confidence</th>
                 <th className="text-left p-4 font-medium text-gray-700">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {filteredAndSortedFAQs.map((faq, index) => <tr key={faq.id} className={`border-b hover:bg-gray-50 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}`}>
-                  {editingId === faq.id ? <>
+              {filteredAndSortedFAQs.map((faq, index) => (
+                <tr key={faq.id} className={`border-b hover:bg-gray-50 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}`}>
+                  {editingId === faq.id ? (
+                    <>
                       <td className="p-4">
-                        <Textarea value={editForm.question || ""} onChange={e => setEditForm({
-                    ...editForm,
-                    question: e.target.value
-                  })} className="min-h-16" />
+                        <Textarea
+                          value={editForm.question || ""}
+                          onChange={(e) => setEditForm({ ...editForm, question: e.target.value })}
+                          className="min-h-16"
+                        />
                       </td>
                       <td className="p-4">
-                        <Textarea value={editForm.answer || ""} onChange={e => setEditForm({
-                    ...editForm,
-                    answer: e.target.value
-                  })} className="min-h-16" />
+                        <Textarea
+                          value={editForm.answer || ""}
+                          onChange={(e) => setEditForm({ ...editForm, answer: e.target.value })}
+                          className="min-h-16"
+                        />
                       </td>
                       <td className="p-4">
-                        <Input value={editForm.category || ""} onChange={e => setEditForm({
-                    ...editForm,
-                    category: e.target.value
-                  })} />
+                        <Input
+                          value={editForm.category || ""}
+                          onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
+                        />
                       </td>
                       <td className="p-4">
-                        <Select value={editForm.confidence || "medium"} onValueChange={value => setEditForm({
-                    ...editForm,
-                    confidence: value as 'high' | 'medium' | 'low'
-                  })}>
+                        <Select
+                          value={editForm.language || "English"}
+                          onValueChange={(value) => setEditForm({ ...editForm, language: value })}
+                        >
+                          <SelectTrigger className="w-32">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="English">English</SelectItem>
+                            <SelectItem value="German">German</SelectItem>
+                            <SelectItem value="French">French</SelectItem>
+                            <SelectItem value="Spanish">Spanish</SelectItem>
+                            <SelectItem value="Italian">Italian</SelectItem>
+                            <SelectItem value="Portuguese">Portuguese</SelectItem>
+                            <SelectItem value="Dutch">Dutch</SelectItem>
+                            <SelectItem value="Russian">Russian</SelectItem>
+                            <SelectItem value="Chinese">Chinese</SelectItem>
+                            <SelectItem value="Japanese">Japanese</SelectItem>
+                            <SelectItem value="Other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </td>
+                      <td className="p-4">
+                        <Select
+                          value={editForm.confidence || "medium"}
+                          onValueChange={(value) => setEditForm({ ...editForm, confidence: value as 'high' | 'medium' | 'low' })}
+                        >
                           <SelectTrigger className="w-24">
                             <SelectValue />
                           </SelectTrigger>
@@ -214,7 +294,9 @@ export const FAQTable = ({
                           </Button>
                         </div>
                       </td>
-                    </> : <>
+                    </>
+                  ) : (
+                    <>
                       <td className="p-4 max-w-80">
                         <div className="font-medium text-gray-900 line-clamp-3">{faq.question}</div>
                       </td>
@@ -225,18 +307,31 @@ export const FAQTable = ({
                         <Badge variant="outline" className="whitespace-nowrap">{faq.category}</Badge>
                       </td>
                       <td className="p-4">
+                        <Badge variant="secondary" className="whitespace-nowrap">
+                          <Globe className="h-3 w-3 mr-1" />
+                          {faq.language}
+                        </Badge>
+                      </td>
+                      <td className="p-4">
                         <div className="flex flex-col gap-1">
-                          <Badge variant={faq.confidence === 'high' ? 'default' : faq.confidence === 'medium' ? 'secondary' : 'destructive'} className="w-fit">
+                          <Badge 
+                            variant={faq.confidence === 'high' ? 'default' : faq.confidence === 'medium' ? 'secondary' : 'destructive'} 
+                            className="w-fit"
+                          >
                             {faq.confidence}
                           </Badge>
-                          {faq.isIncomplete && <Badge variant="outline" className="text-orange-600 border-orange-300 w-fit">
+                          {faq.isIncomplete && (
+                            <Badge variant="outline" className="text-orange-600 border-orange-300 w-fit">
                               <AlertTriangle className="h-3 w-3 mr-1" />
                               Incomplete
-                            </Badge>}
-                          {faq.isDuplicate && <Badge variant="outline" className="text-red-600 border-red-300 w-fit">
+                            </Badge>
+                          )}
+                          {faq.isDuplicate && (
+                            <Badge variant="outline" className="text-red-600 border-red-300 w-fit">
                               <Copy className="h-3 w-3 mr-1" />
                               Duplicate
-                            </Badge>}
+                            </Badge>
+                          )}
                         </div>
                       </td>
                       <td className="p-4">
@@ -244,16 +339,24 @@ export const FAQTable = ({
                           <Button size="sm" variant="outline" onClick={() => handleEdit(faq)}>
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button size="sm" variant="outline" onClick={() => handleDelete(faq.id)} className="text-red-600 hover:text-red-700 hover:bg-red-50">
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            onClick={() => handleDelete(faq.id)}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          >
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                       </td>
-                    </>}
-                </tr>)}
+                    </>
+                  )}
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
       </div>
-    </div>;
+    </div>
+  );
 };

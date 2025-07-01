@@ -1,4 +1,3 @@
-
 interface OpenAIMessage {
   role: 'system' | 'user' | 'assistant';
   content: string;
@@ -73,6 +72,7 @@ RULES:
 6. Look for both explicit Q&A sections and implicit FAQ content
 7. Extract 5-15 high-quality FAQs maximum
 8. Focus on customer service, product, and support related questions
+9. DETECT the language of each FAQ pair accurately
 
 OUTPUT FORMAT:
 Return a JSON array of objects with this exact structure:
@@ -81,6 +81,7 @@ Return a JSON array of objects with this exact structure:
     "question": "Clear, specific question",
     "answer": "Complete, helpful answer",
     "category": "Shipping|Returns|Payment|Support|Technical|General|Account|Products",
+    "language": "English|German|French|Spanish|Italian|Portuguese|Dutch|Russian|Chinese|Japanese|Korean|Arabic|Other",
     "confidence": "high|medium|low"
   }
 ]

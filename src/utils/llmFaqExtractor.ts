@@ -12,6 +12,7 @@ interface LLMFAQResponse {
   question: string;
   answer: string;
   category: string;
+  language: string;
   confidence: 'high' | 'medium' | 'low';
 }
 
@@ -89,6 +90,7 @@ export class LLMFAQExtractor {
       question: llmFAQ.question.trim(),
       answer: llmFAQ.answer.trim(),
       category: llmFAQ.category || 'General',
+      language: llmFAQ.language || 'English',
       sourceUrl,
       confidence: llmFAQ.confidence || 'medium',
       isIncomplete: llmFAQ.answer.length < 30,

@@ -4,6 +4,7 @@ export interface FAQItem {
   question: string;
   answer: string;
   category: string;
+  language: string;
   sourceUrl: string;
   confidence: 'high' | 'medium' | 'low';
   isIncomplete: boolean;
