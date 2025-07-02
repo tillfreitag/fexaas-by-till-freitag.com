@@ -1,6 +1,8 @@
 
 import type { FAQItem } from "@/types/faq";
 import { OpenAIService } from "@/services/OpenAIService";
+import { logger, sanitizeErrorMessage } from "@/utils/securityConfig";
+import { validateContent } from "@/utils/inputValidation";
 
 interface CrawledContent {
   url: string;
@@ -18,55 +20,74 @@ interface LLMFAQResponse {
 
 export class LLMFAQExtractor {
   static async extractFAQsFromContent(crawledData: CrawledContent[]): Promise<FAQItem[]> {
-    console.log(`Processing ${crawledData.length} crawled pages for FAQ extraction`);
+    logger.info(`Processing ${crawledData.length} crawled pages for FAQ extraction`);
     
     const faqs: FAQItem[] = [];
     
     for (const data of crawledData) {
       try {
-        console.log(`Processing page: ${data.url}, content length: ${data.content.length}`);
+        logger.debug(`Processing page: ${data.url}, content length: ${data.content.length}`);
         
+        // Validate content
+        const contentValidation = validateContent(data.content);
+        if (!contentValidation.isValid) {
+          logger.warn(`Content validation failed for ${data.url}: ${contentValidation.error}`);
+          continue;
+        }
+
         // Clean and prepare content
         const cleanedContent = this.cleanContent(data.content);
         
         if (cleanedContent.length < 200) {
-          console.log(`Content too short (${cleanedContent.length} chars), skipping: ${data.url}`);
+          logger.info(`Content too short (${cleanedContent.length} chars), skipping: ${data.url}`);
           continue;
         }
 
-        console.log(`Sending ${cleanedContent.length} characters to OpenAI for extraction`);
+        logger.debug(`Sending ${cleanedContent.length} characters to OpenAI for extraction`);
 
         // Extract FAQs using OpenAI
         const llmFAQs = await OpenAIService.extractFAQs(cleanedContent, data.url);
         
         if (!llmFAQs || llmFAQs.length === 0) {
-          console.log(`No FAQs extracted from: ${data.url}`);
+          logger.info(`No FAQs extracted from: ${data.url}`);
           continue;
         }
 
-        console.log(`OpenAI extracted ${llmFAQs.length} FAQs from: ${data.url}`);
+        logger.info(`OpenAI extracted ${llmFAQs.length} FAQs from: ${data.url}`);
         
-        // Convert to FAQItem format
-        const processedFAQs = llmFAQs.map((faq: LLMFAQResponse) => 
-          this.createFAQItem(faq, data.url)
-        );
+        // Convert to FAQItem format with validation
+        const processedFAQs = llmFAQs
+          .filter((faq: LLMFAQResponse) => this.validateFAQResponse(faq))
+          .map((faq: LLMFAQResponse) => this.createFAQItem(faq, data.url));
 
         faqs.push(...processedFAQs);
         
       } catch (error) {
-        console.error(`Error processing content from ${data.url}:`, error);
+        logger.error(`Error processing content from ${data.url}:`, error);
         continue;
       }
     }
 
-    console.log(`Total FAQs before post-processing: ${faqs.length}`);
+    logger.info(`Total FAQs before post-processing: ${faqs.length}`);
 
     // Remove duplicates and post-process
     const finalFAQs = this.postProcessFAQs(faqs);
     
-    console.log(`Final FAQ count after post-processing: ${finalFAQs.length}`);
+    logger.info(`Final FAQ count after post-processing: ${finalFAQs.length}`);
     
     return finalFAQs;
+  }
+
+  private static validateFAQResponse(faq: LLMFAQResponse): boolean {
+    return !!(
+      faq &&
+      typeof faq.question === 'string' &&
+      typeof faq.answer === 'string' &&
+      faq.question.trim().length > 0 &&
+      faq.answer.trim().length > 0 &&
+      faq.question.length <= 500 &&
+      faq.answer.length <= 2000
+    );
   }
 
   private static cleanContent(content: string): string {
@@ -87,8 +108,8 @@ export class LLMFAQExtractor {
   private static createFAQItem(llmFAQ: LLMFAQResponse, sourceUrl: string): FAQItem {
     return {
       id: `faq-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      question: llmFAQ.question.trim(),
-      answer: llmFAQ.answer.trim(),
+      question: llmFAQ.question.trim().substring(0, 500),
+      answer: llmFAQ.answer.trim().substring(0, 2000),
       category: llmFAQ.category || 'General',
       language: llmFAQ.language || 'English',
       sourceUrl,
@@ -114,7 +135,7 @@ export class LLMFAQExtractor {
         seenQuestions.add(normalizedQuestion);
         uniqueFAQs.push(faq);
       } else {
-        console.log(`Duplicate question filtered out: ${faq.question}`);
+        logger.debug(`Duplicate question filtered out: ${faq.question}`);
       }
     }
 

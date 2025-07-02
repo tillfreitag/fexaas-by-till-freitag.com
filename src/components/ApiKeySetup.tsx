@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { Key, Eye, EyeOff, ExternalLink } from "lucide-react";
 import { CrawlerService } from "@/services/CrawlerService";
+import { sanitizeErrorMessage } from "@/utils/securityConfig";
 
 interface ApiKeySetupProps {
   onApiKeySet: () => void;
@@ -51,7 +52,7 @@ export const ApiKeySetup = ({ onApiKeySet }: ApiKeySetupProps) => {
     } catch (error) {
       toast({
         title: "Validation Error",
-        description: "Unable to validate the API key. Please try again.",
+        description: sanitizeErrorMessage(error),
         variant: "destructive",
       });
     } finally {
@@ -95,6 +96,7 @@ export const ApiKeySetup = ({ onApiKeySet }: ApiKeySetupProps) => {
                 placeholder="fc-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
                 className="pr-10"
                 disabled={isValidating}
+                maxLength={200}
               />
               <Button
                 type="button"
@@ -123,7 +125,8 @@ export const ApiKeySetup = ({ onApiKeySet }: ApiKeySetupProps) => {
         
         <div className="mt-4 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
           <p className="text-sm text-yellow-800">
-            <strong>Note:</strong> Your API key is stored locally in your browser and never sent to our servers.
+            <strong>Security:</strong> Your API key is stored locally in your browser and never sent to our servers.
+            All connections use HTTPS encryption.
           </p>
         </div>
       </CardContent>

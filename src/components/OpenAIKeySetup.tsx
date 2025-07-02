@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { Zap, Eye, EyeOff, ExternalLink } from "lucide-react";
 import { OpenAIService } from "@/services/OpenAIService";
+import { sanitizeErrorMessage } from "@/utils/securityConfig";
 
 interface OpenAIKeySetupProps {
   onApiKeySet: () => void;
@@ -51,7 +52,7 @@ export const OpenAIKeySetup = ({ onApiKeySet }: OpenAIKeySetupProps) => {
     } catch (error) {
       toast({
         title: "Validation Error",
-        description: "Unable to validate the API key. Please try again.",
+        description: sanitizeErrorMessage(error),
         variant: "destructive",
       });
     } finally {
@@ -95,6 +96,7 @@ export const OpenAIKeySetup = ({ onApiKeySet }: OpenAIKeySetupProps) => {
                 placeholder="sk-..."
                 className="pr-10"
                 disabled={isValidating}
+                maxLength={200}
               />
               <Button
                 type="button"
@@ -123,7 +125,8 @@ export const OpenAIKeySetup = ({ onApiKeySet }: OpenAIKeySetupProps) => {
         
         <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
           <p className="text-sm text-blue-800">
-            <strong>Note:</strong> Your API key is stored locally in your browser and never sent to our servers.
+            <strong>Security:</strong> Your API key is stored locally in your browser and never sent to our servers. 
+            All connections use HTTPS encryption.
           </p>
         </div>
       </CardContent>
