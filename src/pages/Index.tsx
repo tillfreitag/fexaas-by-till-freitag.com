@@ -44,6 +44,12 @@ const Index = () => {
     });
   };
 
+  const handleSetupAI = () => {
+    console.log('Setup AI button clicked');
+    setNeedsOpenAIKey(!OpenAIService.hasApiKey());
+    setShowKeySetup(true);
+  };
+
   const handleExtract = async () => {
     if (!url) {
       toast({
@@ -253,10 +259,9 @@ const Index = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => {
-                  setNeedsOpenAIKey(!OpenAIService.hasApiKey());
-                  setShowKeySetup(true);
-                }}
+                onClick={handleSetupAI}
+                className="pointer-events-auto cursor-pointer hover:bg-gray-50 hover:border-gray-300 transition-colors"
+                type="button"
               >
                 <Settings className="h-4 w-4 mr-1" />
                 Setup AI
