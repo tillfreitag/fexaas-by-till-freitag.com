@@ -85,7 +85,13 @@ export class OpenAIService {
       throw new Error('Too many requests. Please wait before trying again.');
     }
 
-    // Validate content length
+    // Validate and clean content
+    if (!content || content.trim().length === 0) {
+      logger.warn('Empty or invalid content provided');
+      return [];
+    }
+
+    // Validate content length and truncate if needed
     if (content.length > 15000) {
       content = content.substring(0, 15000);
       logger.warn('Content truncated due to length limits');
@@ -139,7 +145,7 @@ IMPORTANT: Return ONLY the JSON array, no other text or explanation.`
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini',
+          model: 'gpt-4o-mini', // Using the correct model name
           messages,
           temperature: 0.3,
           max_tokens: 2000,
@@ -149,6 +155,16 @@ IMPORTANT: Return ONLY the JSON array, no other text or explanation.`
       if (!response.ok) {
         const errorText = await response.text();
         logger.error(`OpenAI API error: ${response.status} - ${errorText}`);
+        
+        // Handle specific error cases
+        if (response.status === 401) {
+          throw new Error('Invalid API key. Please check your OpenAI API key.');
+        } else if (response.status === 429) {
+          throw new Error('Rate limit exceeded. Please try again later.');
+        } else if (response.status === 400) {
+          throw new Error('Invalid request. The model or parameters might be incorrect.');
+        }
+        
         throw new Error(`OpenAI API error: ${response.status}`);
       }
 
@@ -169,35 +185,49 @@ IMPORTANT: Return ONLY the JSON array, no other text or explanation.`
         throw new Error('No response from OpenAI API');
       }
 
-      logger.debug('Raw OpenAI response received');
+      logger.debug('Raw OpenAI response received:', content_response.substring(0, 200) + '...');
       
       // Parse the JSON response
-      const cleanedResponse = content_response.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      const cleanedResponse = content_response
+        .replace(/```json\n?/g, '')
+        .replace(/```\n?/g, '')
+        .replace(/^[^[\{]*/, '') // Remove any text before the JSON starts
+        .replace(/[^}\]]*$/, '') // Remove any text after the JSON ends
+        .trim();
       
       try {
         const faqs = JSON.parse(cleanedResponse);
         
         if (!Array.isArray(faqs)) {
-          logger.error('OpenAI response is not an array');
+          logger.error('OpenAI response is not an array:', typeof faqs);
           throw new Error('Invalid response format from OpenAI');
         }
 
         // Validate each FAQ item
         const validFAQs = faqs.filter((faq: any) => {
-          return faq && 
+          const isValid = faq && 
                  typeof faq.question === 'string' && 
                  typeof faq.answer === 'string' &&
                  faq.question.trim().length > 0 &&
                  faq.answer.trim().length > 0;
+          
+          if (!isValid) {
+            logger.debug('Invalid FAQ filtered out:', faq);
+          }
+          
+          return isValid;
         });
 
         logger.info(`Successfully parsed ${validFAQs.length} valid FAQs from OpenAI response`);
-        logger.debug('Token usage:', data.usage);
+        if (data.usage) {
+          logger.debug('Token usage:', data.usage);
+        }
         
         return validFAQs;
       } catch (parseError) {
         logger.error('Failed to parse OpenAI JSON response:', parseError);
-        throw new Error('Failed to parse OpenAI response');
+        logger.error('Raw response that failed to parse:', cleanedResponse);
+        throw new Error('Failed to parse OpenAI response. The AI might have returned invalid JSON.');
       }
 
     } catch (error) {

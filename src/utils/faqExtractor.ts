@@ -27,12 +27,19 @@ export const extractFAQs = async (url: string): Promise<FAQItem[]> => {
       throw new Error(crawlResult.error || 'Failed to crawl website');
     }
 
+    console.log('Raw crawl result:', crawlResult);
+
     if (!crawlResult.data || crawlResult.data.length === 0) {
       console.log('No content found during crawl - using fallback sample data');
       return generateFallbackFAQs(url);
     }
 
     console.log(`Crawl successful - found ${crawlResult.data.length} pages`);
+    
+    // Log content details for debugging
+    crawlResult.data.forEach((page, index) => {
+      console.log(`Page ${index + 1}: ${page.url}, content length: ${page.content?.length || 0}`);
+    });
 
     // Check if we can use AI extraction
     if (!OpenAIService.hasApiKey()) {
@@ -73,50 +80,50 @@ const generateFallbackFAQs = (url: string): FAQItem[] => {
   const domain = new URL(url).hostname;
   const sampleFAQs: Omit<FAQItem, 'id' | 'extractedAt'>[] = [
     {
-      question: "What is your return policy?",
-      answer: "We offer a 30-day return policy for all unused items in original packaging. Simply contact our support team to initiate a return.",
+      question: "Was ist Ihre Rückgaberichtlinie?",
+      answer: "Wir bieten eine 30-tägige Rückgaberichtlinie für alle unbenutzte Artikel in der Originalverpackung an. Kontaktieren Sie einfach unser Support-Team, um eine Rückgabe zu initiieren.",
       category: "Returns & Refunds",
-      language: "English",
+      language: "German",
       sourceUrl: `${url}/faq`,
       confidence: "high",
       isIncomplete: false,
       isDuplicate: false,
     },
     {
-      question: "How long does shipping take?",
-      answer: "Standard shipping typically takes 3-5 business days. Express shipping is available for 1-2 business day delivery.",
+      question: "Wie lange dauert der Versand?",
+      answer: "Der Standardversand dauert normalerweise 3-5 Werktage. Expressversand ist für die Lieferung in 1-2 Werktagen verfügbar.",
       category: "Shipping",
-      language: "English",
+      language: "German",
       sourceUrl: `${url}/support/shipping`,
       confidence: "high",
       isIncomplete: false,
       isDuplicate: false,
     },
     {
-      question: "Do you offer international shipping?",
-      answer: "Yes, we ship to over 50 countries worldwide. International shipping rates and times vary by location.",
+      question: "Bieten Sie internationalen Versand an?",
+      answer: "Ja, wir versenden in über 50 Länder weltweit. Internationale Versandkosten und -zeiten variieren je nach Standort.",
       category: "Shipping",
-      language: "English",
+      language: "German",
       sourceUrl: `${url}/support/shipping`,
       confidence: "medium",
       isIncomplete: false,
       isDuplicate: false,
     },
     {
-      question: "How can I track my order?",
-      answer: "Once your order ships, you'll receive a tracking number via email. You can also check your order status in your account.",
+      question: "Wie kann ich meine Bestellung verfolgen?",
+      answer: "Sobald Ihre Bestellung versendet wird, erhalten Sie eine Tracking-Nummer per E-Mail. Sie können auch Ihren Bestellstatus in Ihrem Konto überprüfen.",
       category: "Orders",
-      language: "English",
+      language: "German",
       sourceUrl: `${url}/help/orders`,
       confidence: "high",
       isIncomplete: false,
       isDuplicate: false,
     },
     {
-      question: "What payment methods do you accept?",
-      answer: "We accept all major credit cards, PayPal, Apple Pay, and Google Pay for secure checkout.",
+      question: "Welche Zahlungsmethoden akzeptieren Sie?",
+      answer: "Wir akzeptieren alle gängigen Kreditkarten, PayPal, Apple Pay und Google Pay für eine sichere Bezahlung.",
       category: "Payment",
-      language: "English",
+      language: "German",
       sourceUrl: `${url}/faq#payment`,
       confidence: "high",
       isIncomplete: false,
@@ -127,10 +134,10 @@ const generateFallbackFAQs = (url: string): FAQItem[] => {
   // Add domain-specific FAQs
   if (domain.includes('shop') || domain.includes('store')) {
     sampleFAQs.push({
-      question: "Do you offer price matching?",
-      answer: "Yes, we match competitor prices on identical items. Contact us with proof of the lower price.",
+      question: "Bieten Sie Preisanpassungen an?",
+      answer: "Ja, wir passen Konkurrenzpreise für identische Artikel an. Kontaktieren Sie uns mit dem Nachweis des niedrigeren Preises.",
       category: "Pricing",
-      language: "English",
+      language: "German",
       sourceUrl: `${url}/price-match`,
       confidence: "high",
       isIncomplete: false,
