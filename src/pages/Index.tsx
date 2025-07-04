@@ -15,6 +15,7 @@ import { exportToExcel, exportToCSV } from "@/utils/exportUtils";
 import { CrawlerService } from "@/services/CrawlerService";
 import { OpenAIService } from "@/services/OpenAIService";
 import type { FAQItem } from "@/types/faq";
+import Footer from "@/components/Footer";
 
 const Index = () => {
   const [url, setUrl] = useState("");
@@ -132,7 +133,7 @@ const Index = () => {
   // Show Firecrawl API key setup if needed
   if (needsFirecrawlKey) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex flex-col">
         {/* Header */}
         <div className="bg-white/80 backdrop-blur-sm border-b shadow-sm sticky top-0 z-50">
           <div className="container mx-auto px-4 py-4">
@@ -150,7 +151,7 @@ const Index = () => {
           </div>
         </div>
 
-        <div className="container mx-auto px-4 py-8">
+        <div className="container mx-auto px-4 py-8 flex-grow">
           <div className="text-center space-y-4 mb-8">
             <h2 className="text-4xl font-bold text-gray-900">
               Real Website Crawling
@@ -175,6 +176,8 @@ const Index = () => {
             </p>
           </div>
         </div>
+
+        <Footer />
       </div>
     );
   }
@@ -182,7 +185,7 @@ const Index = () => {
   // Show OpenAI API key setup if needed
   if (showKeySetup && needsOpenAIKey) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-indigo-100">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-indigo-100 flex flex-col">
         {/* Header */}
         <div className="bg-white/80 backdrop-blur-sm border-b shadow-sm sticky top-0 z-50">
           <div className="container mx-auto px-4 py-4">
@@ -208,7 +211,7 @@ const Index = () => {
           </div>
         </div>
 
-        <div className="container mx-auto px-4 py-8">
+        <div className="container mx-auto px-4 py-8 flex-grow">
           <div className="text-center space-y-4 mb-8">
             <h2 className="text-4xl font-bold text-gray-900">
               AI-Powered FAQ Extraction
@@ -220,12 +223,14 @@ const Index = () => {
 
           <OpenAIKeySetup onApiKeySet={handleOpenAIKeySet} />
         </div>
+
+        <Footer />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex flex-col">
       {/* Header */}
       <div className="bg-white/80 backdrop-blur-sm border-b shadow-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4">
@@ -268,7 +273,7 @@ const Index = () => {
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-8 space-y-8">
+      <div className="container mx-auto px-4 py-8 space-y-8 flex-grow">
         {/* Hero Section */}
         <div className="text-center space-y-4">
           <h2 className="text-4xl font-bold text-gray-900">
@@ -429,6 +434,8 @@ const Index = () => {
           </div>
         )}
       </div>
+
+      <Footer />
     </div>
   );
 };
