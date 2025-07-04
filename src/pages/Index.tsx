@@ -90,20 +90,17 @@ const Index = () => {
       setProgress(100);
       setHasResults(true);
       
-      const extractionType = OpenAIService.hasApiKey() 
-        ? "AI-powered extraction" 
-        : CrawlerService.hasApiKey() 
-          ? "real website crawling" 
-          : "demo mode";
-          
       toast({
         title: "Extraction Complete",
-        description: `Found ${extractedFAQs.length} FAQ items using ${extractionType}`,
+        description: `Successfully extracted ${extractedFAQs.length} FAQ items using AI-powered extraction`,
       });
     } catch (error) {
+      console.error('FAQ extraction error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred during extraction';
+      
       toast({
         title: "Extraction Failed",
-        description: "Unable to extract FAQs from the provided URL.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
