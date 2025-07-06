@@ -96,7 +96,6 @@ export class CrawlerService {
           includeTags: ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'div', 'section', 'article', 'details', 'summary', 'dl', 'dt', 'dd', 'li', 'span', 'main'],
           excludeTags: ['nav', 'footer', 'header', 'script', 'style', 'aside', 'form', 'button', 'input', 'select', 'textarea'],
           onlyMainContent: true, // Focus on main content area
-          removeTags: ['script', 'style', 'nav', 'footer', 'header', 'aside'],
           waitFor: 2000 // Wait 2 seconds for dynamic content to load
         },
         allowBackwardCrawling: false,
@@ -154,7 +153,7 @@ export class CrawlerService {
       const filteredData = crawlData.filter((page: any) => {
         const hasContent = page.content && 
                           typeof page.content === 'string' && 
-                          page.content.trim().length > 20; // Very lenient - just 20 chars
+                          page.content.trim().length > 10; // Very lenient - just 10 chars
         
         if (!hasContent) {
           console.log(`Filtering out page with ${page.content?.length || 0} characters:`, page.url);
@@ -178,16 +177,16 @@ export class CrawlerService {
             waitFor: 3000
           });
 
-          if (scrapeResponse.success && scrapeResponse.data) {
-            const scrapedContent = scrapeResponse.data.markdown || scrapeResponse.data.content || '';
-            if (scrapedContent.trim().length > 20) {
+          if (scrapeResponse.success && scrapeResponse.markdown) {
+            const scrapedContent = scrapeResponse.markdown || scrapeResponse.content || '';
+            if (scrapedContent.trim().length > 10) {
               console.log(`Direct scrape successful: ${scrapedContent.length} characters`);
               return { 
                 success: true, 
                 data: [{
                   url: url,
                   content: scrapedContent.trim(),
-                  metadata: scrapeResponse.data.metadata || {}
+                  metadata: scrapeResponse.metadata || {}
                 }]
               };
             }
