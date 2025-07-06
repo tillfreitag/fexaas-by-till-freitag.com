@@ -46,9 +46,9 @@ export class FirecrawlClient {
       const app = this.getApp();
       logger.info(`Starting crawl for: ${url}`);
 
-      // Enhanced crawl configuration for better content extraction
+      // More conservative crawl configuration to avoid network errors
       const crawlResponse = await app.crawlUrl(url, {
-        limit: 50, // Increased from 5 to 50 pages for more comprehensive crawling
+        limit: 20, // Reduced to 20 pages - good balance between comprehensive and reliable
         scrapeOptions: {
           formats: ['markdown', 'html'], // Include both formats
           includeTags: ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'div', 'section', 'article', 'details', 'summary', 'dl', 'dt', 'dd', 'li', 'span', 'main'],
@@ -57,7 +57,8 @@ export class FirecrawlClient {
           waitFor: 2000 // Wait 2 seconds for dynamic content to load
         },
         allowBackwardLinks: false,
-        allowExternalLinks: false
+        allowExternalLinks: false,
+        timeout: 60000 // Add 60 second timeout to prevent hanging
       });
 
       logger.debug('Firecrawl crawl response received');
@@ -88,6 +89,13 @@ export class FirecrawlClient {
 
     } catch (error) {
       logger.error('Error during Firecrawl crawl:', error);
+      
+      // If we get a network error, try a more conservative approach
+      if (error instanceof Error && error.message.includes('Network Error')) {
+        console.log('Network error detected, trying direct scrape as fallback...');
+        return await this.tryDirectScrape(url);
+      }
+      
       return { 
         success: false, 
         error: sanitizeErrorMessage(error)
@@ -105,7 +113,8 @@ export class FirecrawlClient {
         includeTags: ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'div', 'section', 'article'],
         excludeTags: ['nav', 'footer', 'header', 'script', 'style'],
         onlyMainContent: true,
-        waitFor: 3000
+        waitFor: 3000,
+        timeout: 30000 // 30 second timeout for scraping
       });
 
       if (scrapeResponse.success && scrapeResponse.markdown) {
