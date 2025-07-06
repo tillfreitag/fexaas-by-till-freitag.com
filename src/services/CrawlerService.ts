@@ -119,14 +119,42 @@ export class CrawlerService {
 
       logger.info(`Successfully crawled ${crawlData.length} pages`);
       
-      // Filter out pages with minimal content
-      const filteredData = crawlData.filter((page: any) => 
-        page.content && 
-        typeof page.content === 'string' && 
-        page.content.length > 100
-      );
+      // Log content details before filtering
+      crawlData.forEach((page: any, index: number) => {
+        console.log(`Page ${index + 1} before filtering:`, {
+          url: page.url,
+          contentLength: page.content?.length || 0,
+          contentPreview: page.content?.substring(0, 200) + '...'
+        });
+      });
+
+      // Filter out pages with minimal content - be more lenient
+      const filteredData = crawlData.filter((page: any) => {
+        const hasContent = page.content && 
+                          typeof page.content === 'string' && 
+                          page.content.trim().length > 50; // Reduced from 100 to 50
+        
+        if (!hasContent) {
+          console.log(`Filtering out page with ${page.content?.length || 0} characters:`, page.url);
+        }
+        
+        return hasContent;
+      });
 
       logger.info(`Filtered to ${filteredData.length} pages with substantial content`);
+
+      // If no pages pass the filter, try to include at least one page with any content
+      if (filteredData.length === 0 && crawlData.length > 0) {
+        console.log('No pages passed filtering, including pages with any content...');
+        const anyContentData = crawlData.filter((page: any) => 
+          page.content && typeof page.content === 'string' && page.content.trim().length > 10
+        );
+        
+        if (anyContentData.length > 0) {
+          logger.info(`Including ${anyContentData.length} pages with minimal content to avoid empty result`);
+          return { success: true, data: anyContentData };
+        }
+      }
 
       return { success: true, data: filteredData };
 

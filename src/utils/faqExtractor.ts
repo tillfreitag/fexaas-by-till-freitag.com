@@ -30,14 +30,14 @@ export const extractFAQs = async (url: string): Promise<FAQItem[]> => {
 
   if (!crawlResult.data || crawlResult.data.length === 0) {
     console.error('No content found from crawl');
-    throw new Error('No content found on the website. Please check if the URL is accessible and contains text content.');
+    throw new Error('No content found on the website. The website might be blocking crawlers, have dynamic content that requires JavaScript, or the content might be behind authentication. Please try a different URL.');
   }
 
   console.log(`Crawl successful - found ${crawlResult.data.length} pages`);
   
   // Log content details for debugging
   crawlResult.data.forEach((page, index) => {
-    console.log(`Page ${index + 1}: ${page.url}, content length: ${page.content?.length || 0}`);
+    console.log(`Page ${index + 1}: ${page.url}, content length: ${page.content?.length || 0}, content preview:`, page.content?.substring(0, 300) + '...');
   });
 
   // Check if we can use AI extraction
@@ -48,12 +48,14 @@ export const extractFAQs = async (url: string): Promise<FAQItem[]> => {
 
   // Use AI-powered extraction
   console.log('Starting AI-powered FAQ extraction...');
+  console.log(`Sending ${crawlResult.data.length} pages to OpenAI for processing`);
+  
   try {
     const extractedFAQs = await LLMFAQExtractor.extractFAQsFromContent(crawlResult.data);
     
     if (extractedFAQs.length === 0) {
       console.warn('No FAQs extracted by AI');
-      throw new Error('No FAQs could be extracted from this website. The content might not contain FAQ-style information, or the AI was unable to identify relevant Q&A pairs.');
+      throw new Error('No FAQs could be extracted from this website. The content might not contain FAQ-style information, or the AI was unable to identify relevant Q&A pairs. Try a website with clearer FAQ sections or customer support content.');
     }
 
     console.log(`=== FAQ extraction completed successfully ===`);
