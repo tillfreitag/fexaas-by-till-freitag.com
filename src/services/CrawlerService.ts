@@ -88,17 +88,23 @@ export class CrawlerService {
 
       logger.info(`Starting crawl for: ${url}`);
 
-      // Use crawlUrl for proper website crawling (multiple pages)
+      // Enhanced crawl configuration for better content extraction
       const crawlResponse = await this.firecrawlApp.crawlUrl(url, {
-        limit: 10, // Crawl up to 10 pages
+        limit: 5, // Reduced to 5 pages for more focused crawling
         scrapeOptions: {
-          formats: ['markdown'],
-          includeTags: ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'div', 'section', 'article', 'details', 'summary', 'dl', 'dt', 'dd'],
-          excludeTags: ['nav', 'footer', 'header', 'script', 'style', 'aside', 'form', 'button']
-        }
+          formats: ['markdown', 'html'], // Include both formats
+          includeTags: ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'div', 'section', 'article', 'details', 'summary', 'dl', 'dt', 'dd', 'li', 'span', 'main'],
+          excludeTags: ['nav', 'footer', 'header', 'script', 'style', 'aside', 'form', 'button', 'input', 'select', 'textarea'],
+          onlyMainContent: true, // Focus on main content area
+          removeTags: ['script', 'style', 'nav', 'footer', 'header', 'aside'],
+          waitFor: 2000 // Wait 2 seconds for dynamic content to load
+        },
+        allowBackwardCrawling: false,
+        allowExternalContentLinks: false
       });
 
       logger.debug('Firecrawl crawl response received');
+      console.log('Raw Firecrawl response:', crawlResponse);
 
       if (!crawlResponse.success) {
         logger.error('Firecrawl crawl failed');
@@ -111,28 +117,44 @@ export class CrawlerService {
 
       // Sanitize and transform the response
       const sanitizedResponse = sanitizeApiResponse(crawlResponse);
-      const crawlData = sanitizedResponse.data?.map((page: any) => ({
-        url: page.metadata?.sourceURL || page.url || url,
-        content: page.markdown || page.content || '',
-        metadata: page.metadata || {}
-      })) || [];
+      const crawlData = sanitizedResponse.data?.map((page: any) => {
+        // Try to get content from multiple sources
+        let content = '';
+        
+        if (page.markdown && page.markdown.trim().length > 0) {
+          content = page.markdown.trim();
+        } else if (page.content && page.content.trim().length > 0) {
+          content = page.content.trim();
+        } else if (page.html && page.html.trim().length > 0) {
+          // Basic HTML to text conversion as fallback
+          content = page.html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+        }
 
-      logger.info(`Successfully crawled ${crawlData.length} pages`);
+        return {
+          url: page.metadata?.sourceURL || page.url || url,
+          content: content,
+          metadata: page.metadata || {}
+        };
+      }) || [];
+
+      logger.info(`Successfully processed ${crawlData.length} pages`);
       
       // Log content details before filtering
       crawlData.forEach((page: any, index: number) => {
         console.log(`Page ${index + 1} before filtering:`, {
           url: page.url,
           contentLength: page.content?.length || 0,
-          contentPreview: page.content?.substring(0, 200) + '...'
+          contentPreview: page.content?.substring(0, 300) + '...',
+          hasMarkdown: !!page.markdown,
+          hasHtml: !!page.html
         });
       });
 
-      // Filter out pages with minimal content - be more lenient
+      // More lenient content filtering
       const filteredData = crawlData.filter((page: any) => {
         const hasContent = page.content && 
                           typeof page.content === 'string' && 
-                          page.content.trim().length > 50; // Reduced from 100 to 50
+                          page.content.trim().length > 20; // Very lenient - just 20 chars
         
         if (!hasContent) {
           console.log(`Filtering out page with ${page.content?.length || 0} characters:`, page.url);
@@ -141,19 +163,45 @@ export class CrawlerService {
         return hasContent;
       });
 
-      logger.info(`Filtered to ${filteredData.length} pages with substantial content`);
+      logger.info(`Filtered to ${filteredData.length} pages with content`);
 
-      // If no pages pass the filter, try to include at least one page with any content
-      if (filteredData.length === 0 && crawlData.length > 0) {
-        console.log('No pages passed filtering, including pages with any content...');
-        const anyContentData = crawlData.filter((page: any) => 
-          page.content && typeof page.content === 'string' && page.content.trim().length > 10
-        );
+      // If still no content, try a direct scrape of the main URL
+      if (filteredData.length === 0) {
+        console.log('No content found via crawl, trying direct scrape...');
         
-        if (anyContentData.length > 0) {
-          logger.info(`Including ${anyContentData.length} pages with minimal content to avoid empty result`);
-          return { success: true, data: anyContentData };
+        try {
+          const scrapeResponse = await this.firecrawlApp.scrapeUrl(url, {
+            formats: ['markdown', 'html'],
+            includeTags: ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'div', 'section', 'article'],
+            excludeTags: ['nav', 'footer', 'header', 'script', 'style'],
+            onlyMainContent: true,
+            waitFor: 3000
+          });
+
+          if (scrapeResponse.success && scrapeResponse.data) {
+            const scrapedContent = scrapeResponse.data.markdown || scrapeResponse.data.content || '';
+            if (scrapedContent.trim().length > 20) {
+              console.log(`Direct scrape successful: ${scrapedContent.length} characters`);
+              return { 
+                success: true, 
+                data: [{
+                  url: url,
+                  content: scrapedContent.trim(),
+                  metadata: scrapeResponse.data.metadata || {}
+                }]
+              };
+            }
+          }
+        } catch (scrapeError) {
+          console.log('Direct scrape also failed:', scrapeError);
         }
+      }
+
+      if (filteredData.length === 0) {
+        return { 
+          success: false, 
+          error: 'No readable content found. The website may be blocking crawlers, require JavaScript to load content, or have content behind authentication.' 
+        };
       }
 
       return { success: true, data: filteredData };
