@@ -1,4 +1,3 @@
-
 import FirecrawlApp from '@mendable/firecrawl-js';
 import { logger, sanitizeErrorMessage } from '@/utils/securityConfig';
 import { validateApiKey, validateUrl, rateLimiter } from '@/utils/inputValidation';
@@ -99,7 +98,7 @@ export class CrawlerService {
           waitFor: 2000 // Wait 2 seconds for dynamic content to load
         },
         allowBackwardLinks: false,
-        allowExternalContentLinks: false
+        allowExternalLinks: false
       });
 
       logger.debug('Firecrawl crawl response received');
