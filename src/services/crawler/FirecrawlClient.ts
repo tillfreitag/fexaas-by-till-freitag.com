@@ -48,7 +48,7 @@ export class FirecrawlClient {
 
       // Enhanced crawl configuration for better content extraction
       const crawlResponse = await app.crawlUrl(url, {
-        limit: 5, // Reduced to 5 pages for more focused crawling
+        limit: 50, // Increased from 5 to 50 pages for more comprehensive crawling
         scrapeOptions: {
           formats: ['markdown', 'html'], // Include both formats
           includeTags: ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'div', 'section', 'article', 'details', 'summary', 'dl', 'dt', 'dd', 'li', 'span', 'main'],
