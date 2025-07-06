@@ -24,8 +24,7 @@ const Index = () => {
   const [faqs, setFaqs] = useState<FAQItem[]>([]);
   const [hasResults, setHasResults] = useState(false);
   const [needsFirecrawlKey, setNeedsFirecrawlKey] = useState(!CrawlerService.hasApiKey());
-  const [needsOpenAIKey, setNeedsOpenAIKey] = useState(false);
-  const [showKeySetup, setShowKeySetup] = useState(false);
+  const [showOpenAISetup, setShowOpenAISetup] = useState(false);
   const { toast } = useToast();
 
   const handleFirecrawlKeySet = () => {
@@ -37,8 +36,7 @@ const Index = () => {
   };
 
   const handleOpenAIKeySet = () => {
-    setNeedsOpenAIKey(false);
-    setShowKeySetup(false);
+    setShowOpenAISetup(false);
     toast({
       title: "AI Extraction Ready",
       description: "You can now use AI-powered FAQ extraction!",
@@ -47,8 +45,8 @@ const Index = () => {
 
   const handleSetupAI = () => {
     console.log('Setup AI button clicked');
-    setNeedsOpenAIKey(!OpenAIService.hasApiKey());
-    setShowKeySetup(true);
+    console.log('Current OpenAI key status:', OpenAIService.hasApiKey());
+    setShowOpenAISetup(true);
   };
 
   const handleExtract = async () => {
@@ -182,8 +180,8 @@ const Index = () => {
     );
   }
 
-  // Show OpenAI API key setup if needed
-  if (showKeySetup && needsOpenAIKey) {
+  // Show OpenAI API key setup overlay if needed
+  if (showOpenAISetup) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-indigo-100 flex flex-col">
         {/* Header */}
@@ -203,9 +201,9 @@ const Index = () => {
               </div>
               <Button 
                 variant="outline" 
-                onClick={() => setShowKeySetup(false)}
+                onClick={() => setShowOpenAISetup(false)}
               >
-                Skip for now
+                Close
               </Button>
             </div>
           </div>
@@ -262,7 +260,7 @@ const Index = () => {
                 variant="outline"
                 size="sm"
                 onClick={handleSetupAI}
-                className="pointer-events-auto cursor-pointer hover:bg-gray-50 hover:border-gray-300 transition-colors"
+                className="hover:bg-gray-50 hover:border-gray-300 transition-colors"
                 type="button"
               >
                 <Settings className="h-4 w-4 mr-1" />
