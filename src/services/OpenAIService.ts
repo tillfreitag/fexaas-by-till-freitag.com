@@ -36,11 +36,15 @@ export class OpenAIService {
   }
 
   static getApiKey(): string | null {
-    return localStorage.getItem(this.API_KEY_STORAGE_KEY);
+    const key = localStorage.getItem(this.API_KEY_STORAGE_KEY);
+    console.log('OpenAI API key check:', key ? 'Key exists' : 'No key found');
+    return key;
   }
 
   static hasApiKey(): boolean {
-    return !!this.getApiKey();
+    const hasKey = !!this.getApiKey();
+    console.log('OpenAI hasApiKey:', hasKey);
+    return hasKey;
   }
 
   static async testApiKey(apiKey: string): Promise<boolean> {
@@ -57,7 +61,7 @@ export class OpenAIService {
     }
 
     try {
-      logger.info('Testing OpenAI API key...');
+      console.log('Testing OpenAI API key...');
       const response = await secureFetch(`${this.BASE_URL}/models`, {
         headers: {
           'Authorization': `Bearer ${apiKey}`,
@@ -66,19 +70,30 @@ export class OpenAIService {
       });
       
       const isValid = response.ok;
-      logger.info('OpenAI API key test result:', isValid);
+      console.log('OpenAI API key test result:', isValid);
+      if (!isValid) {
+        const errorText = await response.text();
+        console.error('OpenAI API key test failed:', response.status, errorText);
+      }
       return isValid;
     } catch (error) {
-      logger.error('Error testing OpenAI API key:', error);
+      console.error('Error testing OpenAI API key:', error);
       return false;
     }
   }
 
   static async extractFAQs(content: string, sourceUrl: string): Promise<any[]> {
+    console.log('=== OpenAI extractFAQs called ===');
+    console.log('Content length:', content.length);
+    console.log('Source URL:', sourceUrl);
+    
     const apiKey = this.getApiKey();
     if (!apiKey) {
+      console.error('OpenAI API key not found in extractFAQs');
       throw new Error('OpenAI API key not found');
     }
+
+    console.log('API key exists, proceeding with extraction...');
 
     // Rate limiting check
     if (!rateLimiter.canMakeRequest('openai-extract')) {
@@ -97,7 +112,7 @@ export class OpenAIService {
       logger.warn('Content truncated due to length limits');
     }
 
-    logger.info(`Extracting FAQs from content (${content.length} chars) for: ${sourceUrl}`);
+    console.log(`Sending ${content.length} characters to OpenAI for extraction`);
 
     const messages: OpenAIMessage[] = [
       {
@@ -136,7 +151,7 @@ IMPORTANT: Return ONLY the JSON array, no other text or explanation.`
     ];
 
     try {
-      logger.info('Sending request to OpenAI API...');
+      console.log('Making request to OpenAI API...');
       
       const response = await secureFetch(`${this.BASE_URL}/chat/completions`, {
         method: 'POST',
@@ -145,16 +160,18 @@ IMPORTANT: Return ONLY the JSON array, no other text or explanation.`
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini', // Using the correct model name
+          model: 'gpt-4o-mini',
           messages,
           temperature: 0.3,
           max_tokens: 2000,
         }),
       });
 
+      console.log('OpenAI API response status:', response.status);
+
       if (!response.ok) {
         const errorText = await response.text();
-        logger.error(`OpenAI API error: ${response.status} - ${errorText}`);
+        console.error(`OpenAI API error: ${response.status} - ${errorText}`);
         
         // Handle specific error cases
         if (response.status === 401) {
@@ -169,10 +186,11 @@ IMPORTANT: Return ONLY the JSON array, no other text or explanation.`
       }
 
       const rawData: OpenAIResponse = await response.json();
+      console.log('Raw OpenAI response received');
       
       // Validate response structure
       if (!validateApiResponse(rawData, ['choices'])) {
-        logger.error('Invalid OpenAI API response structure');
+        console.error('Invalid OpenAI API response structure:', rawData);
         throw new Error('Invalid response from OpenAI API');
       }
 
@@ -181,11 +199,12 @@ IMPORTANT: Return ONLY the JSON array, no other text or explanation.`
       const content_response = data.choices[0]?.message?.content;
 
       if (!content_response) {
-        logger.error('No response content from OpenAI API');
+        console.error('No response content from OpenAI API');
         throw new Error('No response from OpenAI API');
       }
 
-      logger.debug('Raw OpenAI response received:', content_response.substring(0, 200) + '...');
+      console.log('OpenAI response content received, length:', content_response.length);
+      console.log('Response preview:', content_response.substring(0, 500) + '...');
       
       // Parse the JSON response
       const cleanedResponse = content_response
@@ -195,11 +214,13 @@ IMPORTANT: Return ONLY the JSON array, no other text or explanation.`
         .replace(/[^}\]]*$/, '') // Remove any text after the JSON ends
         .trim();
       
+      console.log('Cleaned response for parsing:', cleanedResponse.substring(0, 200) + '...');
+      
       try {
         const faqs = JSON.parse(cleanedResponse);
         
         if (!Array.isArray(faqs)) {
-          logger.error('OpenAI response is not an array:', typeof faqs);
+          console.error('OpenAI response is not an array:', typeof faqs);
           throw new Error('Invalid response format from OpenAI');
         }
 
@@ -212,26 +233,26 @@ IMPORTANT: Return ONLY the JSON array, no other text or explanation.`
                  faq.answer.trim().length > 0;
           
           if (!isValid) {
-            logger.debug('Invalid FAQ filtered out:', faq);
+            console.log('Invalid FAQ filtered out:', faq);
           }
           
           return isValid;
         });
 
-        logger.info(`Successfully parsed ${validFAQs.length} valid FAQs from OpenAI response`);
+        console.log(`Successfully parsed ${validFAQs.length} valid FAQs from OpenAI response`);
         if (data.usage) {
-          logger.debug('Token usage:', data.usage);
+          console.log('Token usage:', data.usage);
         }
         
         return validFAQs;
       } catch (parseError) {
-        logger.error('Failed to parse OpenAI JSON response:', parseError);
-        logger.error('Raw response that failed to parse:', cleanedResponse);
+        console.error('Failed to parse OpenAI JSON response:', parseError);
+        console.error('Raw response that failed to parse:', cleanedResponse);
         throw new Error('Failed to parse OpenAI response. The AI might have returned invalid JSON.');
       }
 
     } catch (error) {
-      logger.error('Error calling OpenAI API:', error);
+      console.error('Error calling OpenAI API:', error);
       throw new Error(sanitizeErrorMessage(error));
     }
   }
