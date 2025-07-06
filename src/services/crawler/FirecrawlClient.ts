@@ -57,8 +57,7 @@ export class FirecrawlClient {
           waitFor: 2000 // Wait 2 seconds for dynamic content to load
         },
         allowBackwardLinks: false,
-        allowExternalLinks: false,
-        timeout: 60000 // Add 60 second timeout to prevent hanging
+        allowExternalLinks: false
       });
 
       logger.debug('Firecrawl crawl response received');
@@ -113,8 +112,7 @@ export class FirecrawlClient {
         includeTags: ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'div', 'section', 'article'],
         excludeTags: ['nav', 'footer', 'header', 'script', 'style'],
         onlyMainContent: true,
-        waitFor: 3000,
-        timeout: 30000 // 30 second timeout for scraping
+        waitFor: 3000
       });
 
       if (scrapeResponse.success && scrapeResponse.markdown) {
