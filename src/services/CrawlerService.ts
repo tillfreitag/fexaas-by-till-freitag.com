@@ -98,7 +98,7 @@ export class CrawlerService {
           onlyMainContent: true, // Focus on main content area
           waitFor: 2000 // Wait 2 seconds for dynamic content to load
         },
-        allowBackwardCrawling: false,
+        allowBackwardLinks: false,
         allowExternalContentLinks: false
       });
 
@@ -178,7 +178,7 @@ export class CrawlerService {
           });
 
           if (scrapeResponse.success && scrapeResponse.markdown) {
-            const scrapedContent = scrapeResponse.markdown || scrapeResponse.content || '';
+            const scrapedContent = scrapeResponse.markdown || '';
             if (scrapedContent.trim().length > 10) {
               console.log(`Direct scrape successful: ${scrapedContent.length} characters`);
               return { 
