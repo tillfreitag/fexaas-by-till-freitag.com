@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import { Globe, Download, Edit, Zap, Search, FileText, Settings } from "lucide-react";
+import { Globe, Download, Edit, Zap, Search, FileText, Settings, AlertCircle } from "lucide-react";
 import { FAQTable } from "@/components/FAQTable";
 import { ApiKeySetup } from "@/components/ApiKeySetup";
 import { OpenAIKeySetup } from "@/components/OpenAIKeySetup";
@@ -21,6 +22,7 @@ const Index = () => {
   const [url, setUrl] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [extractionStep, setExtractionStep] = useState("");
   const [faqs, setFaqs] = useState<FAQItem[]>([]);
   const [hasResults, setHasResults] = useState(false);
   const [needsFirecrawlKey, setNeedsFirecrawlKey] = useState(!CrawlerService.hasApiKey());
@@ -71,10 +73,19 @@ const Index = () => {
     setIsLoading(true);
     setProgress(0);
     setHasResults(false);
+    setExtractionStep("Initializing...");
 
-    // Simulate crawling progress
+    // Simulate crawling progress with more detailed status
     const progressInterval = setInterval(() => {
       setProgress((prev) => {
+        if (prev < 30) {
+          setExtractionStep(CrawlerService.hasApiKey() ? "🌐 Crawling website with Firecrawl..." : "📄 Generating demo data...");
+        } else if (prev < 60) {
+          setExtractionStep("📝 Processing content...");
+        } else if (prev < 90) {
+          setExtractionStep(OpenAIService.hasApiKey() ? "🤖 AI analyzing content with OpenAI..." : "⚙️ Basic FAQ extraction...");
+        }
+        
         if (prev >= 90) {
           clearInterval(progressInterval);
           return 90;
@@ -87,15 +98,21 @@ const Index = () => {
       const extractedFAQs = await extractFAQs(url);
       setFaqs(extractedFAQs);
       setProgress(100);
+      setExtractionStep("✅ Extraction complete!");
       setHasResults(true);
+      
+      const extractionMethod = OpenAIService.hasApiKey() ? "AI-powered extraction" : "basic extraction";
+      const crawlMethod = CrawlerService.hasApiKey() ? "real website crawling" : "demo mode";
       
       toast({
         title: "Extraction Complete",
-        description: `Successfully extracted ${extractedFAQs.length} FAQ items using AI-powered extraction`,
+        description: `Successfully extracted ${extractedFAQs.length} FAQ items using ${extractionMethod} with ${crawlMethod}`,
       });
     } catch (error) {
       console.error('FAQ extraction error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred during extraction';
+      
+      setExtractionStep("❌ Extraction failed");
       
       toast({
         title: "Extraction Failed",
@@ -152,11 +169,15 @@ const Index = () => {
         <div className="container mx-auto px-4 py-8 flex-grow">
           <div className="text-center space-y-4 mb-8">
             <h2 className="text-4xl font-bold text-gray-900">
-              Real Website Crawling
+              Setup Website Crawling
             </h2>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Setup your Firecrawl API key to extract FAQs from real websites
+              Firecrawl enables real website crawling to extract content from any public URL. Without it, you'll only see demo data.
             </p>
+            <div className="flex items-center justify-center gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3 max-w-md mx-auto">
+              <AlertCircle className="h-4 w-4" />
+              <span><strong>Required:</strong> To crawl real websites</span>
+            </div>
           </div>
 
           <ApiKeySetup onApiKeySet={handleFirecrawlKeySet} />
@@ -212,11 +233,15 @@ const Index = () => {
         <div className="container mx-auto px-4 py-8 flex-grow">
           <div className="text-center space-y-4 mb-8">
             <h2 className="text-4xl font-bold text-gray-900">
-              AI-Powered FAQ Extraction
+              Setup AI-Powered Extraction
             </h2>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Setup your OpenAI API key for intelligent FAQ extraction
+              OpenAI enables intelligent FAQ extraction that understands context and finds relevant Q&A pairs in any language or format.
             </p>
+            <div className="flex items-center justify-center gap-2 text-sm text-purple-700 bg-purple-50 border border-purple-200 rounded-lg p-3 max-w-md mx-auto">
+              <Zap className="h-4 w-4" />
+              <span><strong>Optional:</strong> For smarter FAQ detection</span>
+            </div>
           </div>
 
           <OpenAIKeySetup onApiKeySet={handleOpenAIKeySet} />
@@ -248,11 +273,13 @@ const Index = () => {
             <div className="flex items-center gap-3">
               {CrawlerService.hasApiKey() && (
                 <Badge variant="outline" className="text-green-600 border-green-300">
-                  Crawling Enabled
+                  <Globe className="h-3 w-3 mr-1" />
+                  Real Crawling
                 </Badge>
               )}
               {OpenAIService.hasApiKey() && (
                 <Badge variant="outline" className="text-purple-600 border-purple-300">
+                  <Zap className="h-3 w-3 mr-1" />
                   AI Extraction
                 </Badge>
               )}
@@ -278,11 +305,13 @@ const Index = () => {
             Extract FAQs from Any Website
           </h2>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            {OpenAIService.hasApiKey() 
-              ? "AI-powered extraction finds relevant FAQs in any language and format"
-              : CrawlerService.hasApiKey() 
-                ? "Real website crawling with smart content extraction"
-                : "Demo mode: Try the interface with sample data"
+            {OpenAIService.hasApiKey() && CrawlerService.hasApiKey()
+              ? "✨ Full AI-powered extraction with real website crawling"
+              : OpenAIService.hasApiKey() 
+                ? "🤖 AI-powered extraction with demo data (setup Firecrawl for real crawling)"
+                : CrawlerService.hasApiKey() 
+                  ? "🌐 Real website crawling with basic extraction (setup OpenAI for AI analysis)"
+                  : "📄 Demo mode - setup API keys for full functionality"
             }
           </p>
         </div>
@@ -329,17 +358,32 @@ const Index = () => {
             {isLoading && (
               <div className="space-y-2">
                 <div className="flex justify-between text-sm text-gray-600">
-                  <span>
-                    {OpenAIService.hasApiKey() 
-                      ? "AI analyzing content..." 
-                      : CrawlerService.hasApiKey() 
-                        ? "Crawling website..." 
-                        : "Generating demo data..."
-                    }
-                  </span>
+                  <span>{extractionStep}</span>
                   <span>{Math.round(progress)}%</span>
                 </div>
                 <Progress value={progress} className="h-2" />
+                <div className="flex items-center gap-2 text-xs text-gray-500">
+                  {CrawlerService.hasApiKey() ? (
+                    <Badge variant="outline" className="text-green-600 border-green-300 text-xs">
+                      <Globe className="h-2 w-2 mr-1" />
+                      Firecrawl
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-orange-600 border-orange-300 text-xs">
+                      Demo Mode
+                    </Badge>
+                  )}
+                  {OpenAIService.hasApiKey() ? (
+                    <Badge variant="outline" className="text-purple-600 border-purple-300 text-xs">
+                      <Zap className="h-2 w-2 mr-1" />
+                      OpenAI
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-gray-600 border-gray-300 text-xs">
+                      Basic Extraction
+                    </Badge>
+                  )}
+                </div>
               </div>
             )}
           </CardContent>
@@ -351,11 +395,11 @@ const Index = () => {
             <Card className="border-0 bg-white/70 backdrop-blur-sm hover:bg-white/90 transition-all duration-200">
               <CardContent className="p-6 text-center">
                 <Zap className="h-12 w-12 text-purple-600 mx-auto mb-4" />
-                <h3 className="font-semibold mb-2">AI-Powered</h3>
+                <h3 className="font-semibold mb-2">AI-Powered Extraction</h3>
                 <p className="text-sm text-gray-600">
                   {OpenAIService.hasApiKey() 
-                    ? "Intelligent extraction that understands context and finds relevant FAQs"
-                    : "Setup OpenAI API for smart FAQ extraction in any language"
+                    ? "✅ Intelligent extraction that understands context and finds relevant FAQs"
+                    : "❌ Setup OpenAI API for smart FAQ extraction in any language"
                   }
                 </p>
               </CardContent>
@@ -363,20 +407,23 @@ const Index = () => {
             
             <Card className="border-0 bg-white/70 backdrop-blur-sm hover:bg-white/90 transition-all duration-200">
               <CardContent className="p-6 text-center">
-                <Edit className="h-12 w-12 text-indigo-600 mx-auto mb-4" />
-                <h3 className="font-semibold mb-2">Live Editing</h3>
+                <Globe className="h-12 w-12 text-green-600 mx-auto mb-4" />
+                <h3 className="font-semibold mb-2">Real Website Crawling</h3>
                 <p className="text-sm text-gray-600">
-                  Edit, sort, filter, and organize extracted FAQs in real-time
+                  {CrawlerService.hasApiKey() 
+                    ? "✅ Crawl any public website to extract actual content"
+                    : "❌ Setup Firecrawl API to crawl real websites instead of demo data"
+                  }
                 </p>
               </CardContent>
             </Card>
             
             <Card className="border-0 bg-white/70 backdrop-blur-sm hover:bg-white/90 transition-all duration-200">
               <CardContent className="p-6 text-center">
-                <Download className="h-12 w-12 text-green-600 mx-auto mb-4" />
-                <h3 className="font-semibold mb-2">Export Options</h3>
+                <Download className="h-12 w-12 text-blue-600 mx-auto mb-4" />
+                <h3 className="font-semibold mb-2">Export & Edit</h3>
                 <p className="text-sm text-gray-600">
-                  Download as Excel or CSV with metadata and timestamps
+                  Edit, sort, filter extracted FAQs and export as Excel or CSV
                 </p>
               </CardContent>
             </Card>
@@ -394,11 +441,18 @@ const Index = () => {
                 </Badge>
                 {OpenAIService.hasApiKey() && (
                   <Badge variant="outline" className="text-purple-600 border-purple-300">
+                    <Zap className="h-3 w-3 mr-1" />
                     AI Extracted
                   </Badge>
                 )}
-                {!CrawlerService.hasApiKey() && (
+                {CrawlerService.hasApiKey() ? (
+                  <Badge variant="outline" className="text-green-600 border-green-300">
+                    <Globe className="h-3 w-3 mr-1" />
+                    Real Website
+                  </Badge>
+                ) : (
                   <Badge variant="outline" className="text-orange-600 border-orange-300">
+                    <AlertCircle className="h-3 w-3 mr-1" />
                     Demo Data
                   </Badge>
                 )}
