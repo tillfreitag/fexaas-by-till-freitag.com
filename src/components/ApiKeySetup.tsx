@@ -71,7 +71,7 @@ export const ApiKeySetup = ({ onApiKeySet }: ApiKeySetupProps) => {
           To crawl real websites, you'll need a Firecrawl API key. 
           <br />
           <a 
-            href="https://firecrawl.dev" 
+            href="https://firecrawl.link/tillfreitag" 
             target="_blank" 
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 font-medium mt-2"

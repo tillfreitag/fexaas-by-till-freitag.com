@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import { Globe, Download, Edit, Zap, Search, FileText, Settings, AlertCircle } from "lucide-react";
+import { Globe, Download, Edit, Zap, Search, FileText, Settings, AlertCircle, ExternalLink } from "lucide-react";
 import { FAQTable } from "@/components/FAQTable";
 import { ApiKeySetup } from "@/components/ApiKeySetup";
 import { OpenAIKeySetup } from "@/components/OpenAIKeySetup";
@@ -178,6 +177,17 @@ const Index = () => {
               <AlertCircle className="h-4 w-4" />
               <span><strong>Required:</strong> To crawl real websites</span>
             </div>
+            <div className="mt-4">
+              <a 
+                href="https://firecrawl.link/tillfreitag" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 font-medium"
+              >
+                Learn more about Firecrawl
+                <ExternalLink className="h-4 w-4" />
+              </a>
+            </div>
           </div>
 
           <ApiKeySetup onApiKeySet={handleFirecrawlKeySet} />
@@ -314,6 +324,19 @@ const Index = () => {
                   : "📄 Demo mode - setup API keys for full functionality"
             }
           </p>
+          {!CrawlerService.hasApiKey() && (
+            <div className="mt-4">
+              <a 
+                href="https://firecrawl.link/tillfreitag" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 font-medium text-sm"
+              >
+                Get Firecrawl API for real website crawling
+                <ExternalLink className="h-4 w-4" />
+              </a>
+            </div>
+          )}
         </div>
 
         {/* Input Section */}
@@ -412,7 +435,20 @@ const Index = () => {
                 <p className="text-sm text-gray-600">
                   {CrawlerService.hasApiKey() 
                     ? "✅ Crawl any public website to extract actual content"
-                    : "❌ Setup Firecrawl API to crawl real websites instead of demo data"
+                    : (
+                      <>
+                        ❌ Setup{" "}
+                        <a 
+                          href="https://firecrawl.link/tillfreitag" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-800 underline"
+                        >
+                          Firecrawl API
+                        </a>
+                        {" "}to crawl real websites instead of demo data
+                      </>
+                    )
                   }
                 </p>
               </CardContent>
